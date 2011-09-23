@@ -105,6 +105,25 @@ function handler_get(req,res){
   }
 }
 
+var argvs={};
+var _argvs=process.ARGV.slice(2);
+for(var i=0;i<_argvs.length;i++){
+  var k=_argvs[i].substring(1,2);
+  var v=_argvs[i].substring(2);
+  argvs[k]=v;
+}
+function getArgv(arg){
+  return argvs[k]||'';
+}
+
+var _config_argvs={'p':'port','h':'host','d':'documentRoot'};
+
+for(var k in _config_argvs){
+    var _k=_config_argvs[k];
+    var v=getArgv(_k);
+    if((v+"").length>0)
+    config[_k]=v;	
+}
 
 server.listen(Number(config.port), config.host);
 sys.puts("Server start at:http://"+(config.host||'127.0.0.1')+":"+config.port);

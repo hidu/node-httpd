@@ -1,3 +1,9 @@
 run:
 node httpd.js
 
+the default config file:
+config.js
+
+run it and overwrite the config items be argvs:
+node httpd.js -p8000 -h192.168.1.101 -d/data/www
+
