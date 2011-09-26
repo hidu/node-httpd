@@ -41,6 +41,12 @@ for(var k in _config_argvs){
 httpd.handMap={};
 httpd.handAll=function(){};//hand all request;
 
+httpd.fileHandler={};
+httpd.fileHandlerBind=function(fileType,handler){
+  httpd.fileHandler[fileType]=handler;
+}
+
+
 var server = http.createServer(function(req, res){
   httpd.req=req;
   httpd.res=res;
@@ -98,26 +104,51 @@ httpd.bind=function(path,handFn){
 httpd.close = function () { server.close(); };
 
 httpd.readFile=function(filename){
+   httpd.sandbox = {require: require,console: console,
+                           __filename: filename,res:httpd.res,
+                           req:httpd.req};
 
+   var ext=myu.extname(filename);
+   if(httpd.fileHandler[ext]){
+     httpd.fileHandler[ext](filename);
+     return;
+   }
+   
   fs.readFile(filename,config.charset, function(err, data){
       if (err) {
         hand_500(err.message);
       }else{
-        var ext=myu.extname(filename);
         headers = { "Content-Type": mime.getByExt(ext)};
         httpd.res.writeHead(200, headers);
-         
-        if(ext=='node'){
-            var sandbox = {require: require,console: console,
-                           __filename: filename,res:httpd.res,
-                           req:httpd.req};
-            require('vm').runInNewContext(data, sandbox, "myfile.vm");
-            data="";
-         }
         httpd.res.end(httpd.req.method === "HEAD" ? "" : data);
       }
     });
 };
+
+httpd.fileHandlerBind('node',function(filename){
+  fs.readFile(filename,config.charset, function(err, data){
+      if (err) {
+        hand_500(err.message);
+      }else{
+         require('vm').runInNewContext(data, httpd.sandbox, "myfile.vm");
+         httpd.res.end("");
+      }
+  });
+});
+
+httpd.fileHandlerBind('nsp',function(filename){
+   fs.readFile(filename,config.charset, function(err, data){
+      if (err) {
+        hand_500(err.message);
+      }else{
+          var code=data;
+          //@todo
+//          var reg0=/^<script\s+run\=\s*[\'\"]server\s*[\'\"]\s*>[.\s]*<\/script>$/gmi;
+  //        var result= code.match(reg0);
+          httpd.res.end("");
+      }
+  });
+});
 
 
 function handler_get(req,res){
