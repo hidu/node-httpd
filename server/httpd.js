@@ -5,6 +5,7 @@ var url = require("url");
 var fs = require('fs');
 var path=require('path');
 var url=require('url');
+var myu=require('./util');
 
 var http = require("http");
 
@@ -38,19 +39,6 @@ for(var k in _config_argvs){
     httpd.config[_k]=v;	
 }
 
-
-
-function strlen(str){
-    var len=0;  
-    for(var i=0;i<str.length;i++)if (str.charCodeAt(i)>255){len+=2;}else{len++;}
-    return len;  
-}  
-
-httpd.strlen=strlen;
-
-
-
-
 httpd.handMap={};
 httpd.handAll=function(){};//hand all request;
 
@@ -81,12 +69,23 @@ function hand_error(code,msg){
  var html="<html><head><title>"+code+" Exception</title></head>";
      html+="<body><h1>"+code+" Exception</h1><p style='color:red;font-size:20px'>"+msg+"</p></body></html>";
   httpd.res.writeHead(code, { "Content-Type": "text/html;charset="+httpd.config.charset
-                     , "Content-Length": strlen(html)
+                     , "Content-Length": myu.strlen(html)
                      });
   httpd.res.end(html);
 }
 
+httpd.config._directoryIndex=myu.str2Array(httpd.config.directoryIndex);
 
+httpd.getDirectoryIndexFile=function(dir){
+  var indexes=httpd.config._directoryIndex;
+  for(var i=0;i<indexes.length;i++){
+      var f=dir+"/"+indexes[i];
+      if(path.existsSync(f)){
+         return indexes[i];
+       }
+  }
+  return null;
+}
 
 function hand_500(msg) {
    msg="system error:"+msg||"";
@@ -99,10 +98,19 @@ httpd.bind=function(path,handFn){
 
 httpd.close = function () { server.close(); };
 
-function extname (path) {
-  var index = path.lastIndexOf(".");
-  return index < 0 ? "" : path.substring(index+1);
-}
+httpd.readFile=function(filename){
+  fs.readFile(filename,config.charset, function(err, data){
+      if (err) {
+        hand_500(err.message);
+      }else{
+        headers = { "Content-Type": mime.lookupExtension(myu.extname(filename))
+                  };
+        httpd.res.writeHead(200, headers);
+        httpd.res.end(httpd.req.method === "HEAD" ? "" : data);
+      }
+    });
+};
+
 
 function handler_get(req,res){
   var location=url.parse(req.url);
@@ -114,10 +122,16 @@ function handler_get(req,res){
             if (err) {
                 hand_500(err.message);
               }else{
-                if(stats.isDirectory() && httpd.config.indexes){
-                   list_dir();
-                }else if(stats.isFile()){
-                   readFile(filename);
+                if(stats.isFile()){
+                      httpd.readFile(filename);
+                }else if(stats.isDirectory()){
+                     var indexFile=httpd.getDirectoryIndexFile(filename);
+                     if(indexFile){
+                          httpd.readFile(filename+"/"+indexFile);
+                      }else if(httpd.config.indexes){
+                          list_dir();
+                         }
+                     
                  }
               }  
           });  
@@ -131,42 +145,30 @@ function handler_get(req,res){
             if (err) {
                 hand_500(err.message);
             }else{
-             var body="<html><head><meta content='text/html; charset=utf-8' http-equiv='Content-Type'>"
-                       +"<title>index of "+location.pathname+"</title></head><body>"
-                       +"<h2>"+location.pathname+"</h2>"
-                       +"<table style='width:90%'><tr bgcolor='#c8ddf2'><th>Name</th><th>size</th><th>createTime</th></tr>\n";
+                 files.sort();
                  if(location.pathname!='/'){
                       files.unshift("..");
                    }
-                 var p=location.pathname.replace(/\/?$/,"");
+             var p=location.pathname.replace(/\/?$/,"");
                  
+             var body="<html><head><meta content='text/html; charset="+httpd.config.charset+"' http-equiv='Content-Type'>"
+                       +"<title>index of "+location.pathname+"</title></head><body>"
+                       +"<h2>"+location.pathname+"</h2>"
+                       +"<table style='width:90%'><tr bgcolor='#c8ddf2'><th>Name</th><th>size</th><th>createTime</th></tr>\n";
                  for(var i=0;i<files.length;i++){
                      body+="<tr><td><a href='"+encodeURI(p+"/"+files[i])+"'>"+files[i]+"</a></td><td></td><td></td></tr>\n";
                     }
                   body+="</body></html>";
-                 var headers = { "Content-Type": 'text/html;charset=utf-8'
-                            //    ,"Content-Length":strlen(body)
-                                  };
+                 var headers = {"Content-Type": 'text/html;charset='+httpd.config.charset};
                   res.writeHead(200, headers);
                   res.end(req.method === "HEAD" ? "" : body);   
               }
           });
   }
   
-  function readFile(filename){
-      fs.readFile(filename,config.charset, function(err, data){
-          if (err) {
-            hand_500(err.message);
-          }else{
-            headers = { "Content-Type": mime.lookupExtension(extname(filename))
-                    //  , "Content-Length": strlen(data)
-                      };
-            res.writeHead(200, headers);
-            res.end(req.method === "HEAD" ? "" : data);
-          }
-        });
-  }
-}
+};
+
+
 
 
 
