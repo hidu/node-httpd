@@ -103,7 +103,7 @@ httpd.readFile=function(filename){
       if (err) {
         hand_500(err.message);
       }else{
-        headers = { "Content-Type": mime.lookupExtension(myu.extname(filename))
+        headers = { "Content-Type": mime.getByExt(myu.extname(filename))
                   };
         httpd.res.writeHead(200, headers);
         httpd.res.end(httpd.req.method === "HEAD" ? "" : data);
