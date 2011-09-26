@@ -1,0 +1,2 @@
+res.write("hello");
+res.write(req.url);

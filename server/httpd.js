@@ -1,6 +1,5 @@
 var mime=require("./mime");
 var config=require('./config');
-var sys=require('sys');
 var url = require("url");
 var fs = require('fs');
 var path=require('path');
@@ -99,13 +98,22 @@ httpd.bind=function(path,handFn){
 httpd.close = function () { server.close(); };
 
 httpd.readFile=function(filename){
+
   fs.readFile(filename,config.charset, function(err, data){
       if (err) {
         hand_500(err.message);
       }else{
-        headers = { "Content-Type": mime.getByExt(myu.extname(filename))
-                  };
+        var ext=myu.extname(filename);
+        headers = { "Content-Type": mime.getByExt(ext)};
         httpd.res.writeHead(200, headers);
+         
+        if(ext=='node'){
+            var sandbox = {require: require,console: console,
+                           __filename: filename,res:httpd.res,
+                           req:httpd.req};
+            require('vm').runInNewContext(data, sandbox, "myfile.vm");
+            data="";
+         }
         httpd.res.end(httpd.req.method === "HEAD" ? "" : data);
       }
     });
@@ -173,5 +181,5 @@ function handler_get(req,res){
 
 
 server.listen(Number(httpd.config.port), httpd.config.host);
-sys.puts("Server start at:http://"+(httpd.config.host||'127.0.0.1')+":"+httpd.config.port);
+console.log("Server start at:http://"+(httpd.config.host||'127.0.0.1')+":"+httpd.config.port);
 
