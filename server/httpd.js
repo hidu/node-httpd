@@ -51,14 +51,18 @@ var server = http.createServer(function(req, res){
   httpd.req=req;
   httpd.res=res;
   var location=url.parse(req.url);
-  var path=decodeURI(location.pathname);
+  var p=decodeURI(location.pathname);
+  var filename=config.documentRoot+p;
+  httpd.SCRIPT_NAME=path.relative(httpd.config.documentRoot,filename);
+  httpd.SCRIPT_FILENAME=filename;
+  
   res.setHeader('server','node-httpd '+httpd.version);
   if(false===httpd.handAll.call(httpd)){
      return;
   }  
   
-  if(httpd.handMap[path]){
-    return httpd.handMap[path].call(httpd);
+  if(httpd.handMap[p]){
+    return httpd.handMap[p].call(httpd);
   }
   if (req.method === "GET" || req.method === "HEAD") {
     handler_get(req, res);
@@ -139,18 +143,45 @@ httpd.fileHandlerBind('node',function(filename){
 });
 
 httpd.fileHandlerNsp=function(filename){
-   fs.readFile(filename,config.charset, function(err, data){
-      if (err) {
-        hand_500(err.message);
-      }else{
-          var code=myu.compileNsp(data);
-         // console.log(code);
-         try{
-          require('vm').runInNewContext(code, httpd.sandbox, "myfile.vm");
-          }catch(e){console.log(e);}
-          httpd.res.end("");
-      }
-  });
+    var compileJsPath=httpd.config.compileDir+"/"+httpd.SCRIPT_NAME+".js";
+    myu.directoryCheck(path.dirname(compileJsPath));
+    
+    var stats_cur=fs.lstatSync(filename);
+    path.exists(compileJsPath,function(exists){
+       if(exists){
+           var stats=fs.lstatSync(compileJsPath);
+          if(stats.mtime==stats_cur.mtime){
+                 fs.readFile(filename,config.charset, function(err, data){
+                    if (err){ hand_500(err.message);}else{run_code(data);}
+                   });
+          }else{
+            compile_run();
+           }
+       }else{
+         compile_run();
+       }
+    });
+    
+    function run_code(code){
+     try{
+       require('vm').runInNewContext(code, httpd.sandbox, "myfile.vm");
+      }catch(e){console.log(e);}
+      httpd.res.end("");
+    }
+    
+    function compile_run(){
+         fs.readFile(filename,config.charset, function(err, data){
+            if (err) {
+               hand_500(err.message);
+            }else{
+               var code=myu.compileNsp(data);
+                 fs.writeFile(compileJsPath,code,httpd.config.charset,function(){
+                      fs.utimes(compileJsPath,stats_cur.atime,stats_cur.mtime);
+                   });
+               run_code(code);
+             }
+          });
+    }
 };
 
 httpd.fileHandlerBind('nsp',httpd.fileHandlerNsp);

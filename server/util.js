@@ -62,3 +62,12 @@ util.compileNsp=function(code){
     return js;
 }
 
+util.directoryCheck=function(dir){
+   var fs=require('fs');
+   var path=require('path');
+   if(!path.existsSync(dir)){
+     util.directoryCheck(path.dirname(dir));
+     fs.mkdirSync(dir,0777);
+   }
+}
+
