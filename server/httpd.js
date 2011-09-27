@@ -136,19 +136,20 @@ httpd.fileHandlerBind('node',function(filename){
   });
 });
 
-httpd.fileHandlerBind('nsp',function(filename){
+httpd.fileHandlerNsp=function(filename){
    fs.readFile(filename,config.charset, function(err, data){
       if (err) {
         hand_500(err.message);
       }else{
-          var code=data;
-          //@todo
-//          var reg0=/^<script\s+run\=\s*[\'\"]server\s*[\'\"]\s*>[.\s]*<\/script>$/gmi;
-  //        var result= code.match(reg0);
+          var code=myu.compileNsp(data);
+         // console.log(code);
+          require('vm').runInNewContext(code, httpd.sandbox, "myfile.vm");
           httpd.res.end("");
       }
   });
-});
+};
+
+httpd.fileHandlerBind('nsp',httpd.fileHandlerNsp);
 
 
 function handler_get(req,res){

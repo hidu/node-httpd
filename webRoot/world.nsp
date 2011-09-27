@@ -9,6 +9,11 @@ res.write("now is:");
 res.write(new Date().toLocaleString());
 var a="123";
 </script>
-<?=a?>
+<div>a=<?=a?></div>
+<div id="a">
+<script>
+alert("ok");
+</script>
+</div>
 </body>
 </html>

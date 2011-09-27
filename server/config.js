@@ -6,3 +6,4 @@ config.documentRoot=path.dirname(__dirname)+"/webRoot";
 config.indexes=true;              //是否列出目录
 config.charset='utf-8';           //默认文件编码   
 config.directoryIndex="index.html index.htm";
+config.compileDir=path.dirname(__dirname)+"/compile";
