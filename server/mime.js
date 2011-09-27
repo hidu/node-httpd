@@ -1,3 +1,12 @@
+/**
+* nodejs http server
+* http://www.hongtao3.com
+*
+* Copyright 2011, duwei
+*
+* @author duwei<duv123@gmail.com>
+*
+*/
 var fs=require('fs');  
 var myu=require('./util');
 var tmp=myu.trim(fs.readFileSync(__dirname+'/mime.types','utf-8').replace(/\n+/g,"\n")).split("\n");

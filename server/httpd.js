@@ -1,3 +1,12 @@
+/**
+* nodejs http server
+* http://www.hongtao3.com
+*
+* Copyright 2011, duwei
+*
+* @author duwei<duv123@gmail.com>
+*
+*/
 var mime=require("./mime");
 var config=require('./config');
 var url = require("url");

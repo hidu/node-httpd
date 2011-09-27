@@ -1,3 +1,12 @@
+/**
+* nodejs http server
+* http://www.hongtao3.com
+*
+* Copyright 2011, duwei
+*
+* @author duwei<duv123@gmail.com>
+*
+*/
 var config=exports;
 var path=require('path');
 config.port=8080;
