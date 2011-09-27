@@ -130,7 +130,9 @@ httpd.fileHandlerBind('node',function(filename){
       if (err) {
         hand_500(err.message);
       }else{
-         require('vm').runInNewContext(data, httpd.sandbox, "myfile.vm");
+         try{
+            require('vm').runInNewContext(data, httpd.sandbox, "myfile.vm");
+         }catch(e){console.log(e);}
          httpd.res.end("");
       }
   });
@@ -143,7 +145,9 @@ httpd.fileHandlerNsp=function(filename){
       }else{
           var code=myu.compileNsp(data);
          // console.log(code);
+         try{
           require('vm').runInNewContext(code, httpd.sandbox, "myfile.vm");
+          }catch(e){console.log(e);}
           httpd.res.end("");
       }
   });

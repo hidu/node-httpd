@@ -12,7 +12,7 @@ var a="123";
 <div>a=<?=a?></div>
 <div id="a">
 <script>
-alert("ok");
+
 </script>
 </div>
 </body>
