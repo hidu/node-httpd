@@ -47,9 +47,15 @@ for(var k in _config_argvs){
     httpd.config[_k]=v;	
 }
 
+/**
+ * {uri:function(){}}
+ */
 httpd.handMap={};
 httpd.handAll=function(){};//hand all request;
 
+/**
+ * 文件类型句柄
+ */
 httpd.fileHandler={};
 httpd.fileHandlerBind=function(fileType,handler){
   httpd.fileHandler[fileType]=handler;
@@ -59,24 +65,59 @@ httpd.fileHandlerBind=function(fileType,handler){
 var server = http.createServer(function(req, res){
   httpd.req=req;
   httpd.res=res;
-  var location=url.parse(req.url);
-  var p=decodeURI(location.pathname);
-  var filename=config.documentRoot+p;
-  httpd.SCRIPT_NAME=path.relative(httpd.config.documentRoot,filename);
-  httpd.SCRIPT_FILENAME=filename;
-  
-  res.setHeader('server','node-httpd '+httpd.version);
-  if(false===httpd.handAll.call(httpd)){
-     return;
-  }  
-  
-  if(httpd.handMap[p]){
-    return httpd.handMap[p].call(httpd);
-  }
-  if (req.method === "GET" || req.method === "HEAD") {
-    handler_get(req, res);
-  }
+  _init(req,res);
 });
+
+function _init(req,res){
+	var location=url.parse(req.url);
+	var p=decodeURI(location.pathname);
+	
+	var filename=config.documentRoot+p;
+	
+	httpd.$_SERVER={ "SERVER_ADDR":httpd.config.host,
+				       "SERVER_PORT":httpd.config.port,
+				       "SERVER_SOFTWARE":"node-httpd "+httpd.version,
+				       "DOCUMENT_ROOT":httpd.config.documentRoot,
+				       "SCRIPT_FILENAME":filename,
+				       "SCRIPT_NAME":path.relative(httpd.config.documentRoot,filename),
+				       "REQUEST_METHOD":req.method,
+				       "SERVER_PROTOCOL":"HTTP/1.1",
+				       "REQUEST_URI":req.url,
+				       "QUERY_STRING":location['query']||"",
+				       "REQUEST_TIME":new Date().getTime()
+				      };
+	 for(var _i in req.headers){
+		  httpd.$_SERVER["HTTP-"+_i.toUpperCase()]=req.headers[_i];  
+	 }	
+	  
+	httpd.$_GET={};
+	if(httpd.$_SERVER['QUERY_STRING']){
+		httpd.$_GET=require('querystring').parse(httpd.$_SERVER['QUERY_STRING']);
+		
+	}
+	
+	httpd.sandbox = {require: require,
+			            console: console,
+	                   __filename: httpd.filename,
+	                   res:httpd.res,
+	                   req:httpd.req,
+	                   $_SERVER:httpd.$_SERVER,
+	                   $_GET:httpd.$_GET
+	                     };
+	  
+
+	  httpd.res.setHeader('server','node-httpd '+httpd.version);
+	  if(false===httpd.handAll.call(httpd)){
+	     return;
+	  }  
+	  if(httpd.handMap[p]){
+	    return httpd.handMap[p].call(httpd);
+	  }
+	  if (httpd.req.method === "GET" || httpd.req.method === "HEAD") {
+	    handler_get(httpd.req, httpd.res);
+	  }  
+}
+
 
 function hand_404() {
    var msg="the request url "+decodeURI(httpd.req.url)+" is not on the server";
@@ -117,9 +158,6 @@ httpd.bind=function(path,handFn){
 httpd.close = function () { server.close(); };
 
 httpd.readFile=function(filename){
-   httpd.sandbox = {require: require,console: console,
-                           __filename: filename,res:httpd.res,
-                           req:httpd.req};
 
    var ext=myu.extname(filename);
    if(httpd.fileHandler[ext]){
@@ -152,7 +190,7 @@ httpd.fileHandlerBind('node',function(filename){
 });
 
 httpd.fileHandlerNsp=function(filename){
-    var compileJsPath=httpd.config.compileDir+"/"+httpd.SCRIPT_NAME+".js";
+    var compileJsPath=httpd.config.compileDir+"/"+httpd.$_SERVER['SCRIPT_NAME']+".js";
     myu.directoryCheck(path.dirname(compileJsPath));
     
     var stats_cur=fs.lstatSync(filename);

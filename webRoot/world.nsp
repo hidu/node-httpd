@@ -10,10 +10,31 @@ res.write(new Date().toLocaleString());
 var a="123";
 </script>
 <div>a=<?=a?></div>
+<div>
+当前文件：
+<script run="server">
+res.write($_SERVER['SCRIPT_FILENAME']);
+</script>
+</div>
 <div id="a">
 <script>
 document.write(new Date().toLocaleString());
 </script>
 </div>
+<pre>
+$_SERVER:
+<script run=server>
+var a=require('util').inspect($_SERVER);
+res.write(a);
+</script>
+</pre>
+
+<pre>
+$_GET:
+<script run=server>
+var a=require('util').inspect($_GET);
+res.write(a);
+</script>
+</pre>
 </body>
 </html>
