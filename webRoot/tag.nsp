@@ -1,0 +1,14 @@
+
+<html>
+<head>
+<title><?js echo(new Date().getFullYear());?></title>
+</head>
+<body>
+<?js
+ for(var i=0;i<10;i++){
+?>
+<div><?=i?></div>
+<?js }?>
+<?js  echo("nihao");?>
+</body>
+</html>

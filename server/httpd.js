@@ -59,7 +59,7 @@ httpd.handAll=function(){};//hand all request;
 httpd.fileHandler={};
 httpd.fileHandlerBind=function(fileType,handler){
   httpd.fileHandler[fileType]=handler;
-}
+};
 
 
 var server = http.createServer(function(req, res){
@@ -101,6 +101,7 @@ function _init(req,res){
 	                   __filename: httpd.filename,
 	                   res:httpd.res,
 	                   req:httpd.req,
+	                   echo:function(s){httpd.res.write(s+"");},
 	                   $_SERVER:httpd.$_SERVER,
 	                   $_GET:httpd.$_GET
 	                     };
@@ -144,7 +145,7 @@ httpd.getDirectoryIndexFile=function(dir){
        }
   }
   return null;
-}
+};
 
 function hand_500(msg) {
    msg="system error:"+msg||"";

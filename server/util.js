@@ -31,7 +31,8 @@ util.str2Array=function(str,spilt){
 util.compileNsp=function(code){
    // var code=require('fs').readFileSync(filename,httpd.config.charset);
     var reg0=/<script\s+run\=\s*[\'\"]?server\s*[\'\"]?\s*>([\s\S]*?)<\/script>/gmi;
-    var reg1=/<\?\=(\w+)\;?\s*\?>/gmi;
+    var reg1=/<\?\=([\s\S]*?)\;?\s*\?>/gmi;
+    var reg1_1=/<\?js\s([\s\S]*?)\?>/gmi;
     var reg2=/nodejs\?>([\s\S]*?)<\?nodejs/gmi;
     var reg3=/([\s\S]*?)(?=(<\?nodejs))/gmi;
     var reg4=/nodejs\?>([\s\S]*)/gmi;
@@ -44,16 +45,21 @@ util.compileNsp=function(code){
     code= code.replace(reg0,function(all,_code){
        matches[i]=_code;
        return tag_start+uid+i+++tag_end;
-    }).replace(reg1,function(all,_code){
-       matches[i]="\nres.write("+_code+");";
+    }).replace(reg1_1,function(all,_code){
+        matches[i]=_code;
+        return tag_start+uid+i+++tag_end;
+     }).replace(reg1,function(all,_code){
+       matches[i]="\necho("+_code+");";
        return tag_start+uid+i+++tag_end;
     });
+    
+    console.log(code);
     
     function repl(reg,nostart,noend){
        code=code.replace(reg,function(all,html){
             if(html==undefined || !html.length || html.match(/^\s+$/m))return "";
              html=html.replace(/\n/g,"\\n").replace(/\"/g,"\\\"");
-             matches[i]="\nres.write(\""+html+"\");";
+             matches[i]="\necho(\""+html+"\");";
            return (nostart?"":tag_start)+uid+i+++(noend?"":tag_end);
         });
     }
@@ -69,7 +75,7 @@ util.compileNsp=function(code){
       js+=matches[i];
     });
     return js;
-}
+};
 
 util.directoryCheck=function(dir){
    var fs=require('fs');
@@ -78,5 +84,5 @@ util.directoryCheck=function(dir){
      util.directoryCheck(path.dirname(dir));
      fs.mkdirSync(dir,0777);
    }
-}
+};
 
