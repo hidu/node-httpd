@@ -30,27 +30,34 @@ util.str2Array=function(str,spilt){
 
 util.compileNsp=function(code){
    // var code=require('fs').readFileSync(filename,httpd.config.charset);
-    var reg0=/<script\s+run\=\s*[\'\"]?server\s*[\'\"]?\s*>([\s\S]*?)<\/script>/gmi;
-    var reg1=/<\?\=([\s\S]*?)\;?\s*\?>/gmi;
-    var reg1_1=/<\?js\s([\s\S]*?)\?>/gmi;
-    var reg2=/nodejs\?>([\s\S]*?)<\?nodejs/gmi;
-    var reg3=/([\s\S]*?)(?=(<\?nodejs))/gmi;
-    var reg4=/nodejs\?>([\s\S]*)/gmi;
+    var reg0=/<script\s+run\=\s*[\'\"]?server\s*[\'\"]?\s*>([\s\S]*?)<\/script>/gmi; //<script run=server>echo('hello')</script>
+    var reg0_1=/<\?js\s([\s\S]*?)\?>/gm;       //<?js echo('hello')?>
+    var reg0_2=/<\?js\s([\s\S]*?)$/gm;         //<?js echo('hello')
+    var reg1=/<\?\=([\s\S]*?)\;?\s*\?>/gm;     // sort tag <?=a?>
+    var reg2=/nodejs\?>([\s\S]*?)<\?nodejs/gm; //内部替换 处理服务器端js中间的html代码
+    var reg3=/([\s\S]*?)(?=(<\?nodejs))/gm;    //内部替换 处理服务器端js前面的html代码
+    var reg4=/nodejs\?>([\s\S]*)/gm;            //内部替换 处理服务器端js后面的html代码
 
     var matches={};
     var uid="code";
     var i=0;
 
     var tag_start="<?nodejs ",tag_end=" nodejs?>";
-    code= code.replace(reg0,function(all,_code){
-       matches[i]=_code;
-       return tag_start+uid+i+++tag_end;
-    }).replace(reg1_1,function(all,_code){
-        matches[i]=_code;
-        return tag_start+uid+i+++tag_end;
-     }).replace(reg1,function(all,_code){
-       matches[i]="\necho("+_code+");";
-       return tag_start+uid+i+++tag_end;
+
+    function repl0(reg){
+    	code=code.replace(reg,function(all,_code){
+    		matches[i]=_code;
+    		return tag_start+uid+i+++tag_end;
+    	});
+    }
+    
+    repl0(reg0);
+    repl0(reg0_1);
+    repl0(reg0_2);
+    
+    code= code.replace(reg1,function(all,_code){
+    	matches[i]="\necho("+_code+");";
+    	return tag_start+uid+i+++tag_end;
     });
     
     
