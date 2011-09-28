@@ -53,7 +53,6 @@ util.compileNsp=function(code){
        return tag_start+uid+i+++tag_end;
     });
     
-    console.log(code);
     
     function repl(reg,nostart,noend){
        code=code.replace(reg,function(all,html){

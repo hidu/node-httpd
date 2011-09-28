@@ -61,11 +61,10 @@ httpd.fileHandlerBind=function(fileType,handler){
   httpd.fileHandler[fileType]=handler;
 };
 
-
+var i=0;
 var server = http.createServer(function(req, res){
-  httpd.req=req;
-  httpd.res=res;
   _init(req,res);
+  console.log(i++);
 });
 
 function _init(req,res){
@@ -74,7 +73,7 @@ function _init(req,res){
 	
 	var filename=config.documentRoot+p;
 	
-	httpd.$_SERVER={ "SERVER_ADDR":httpd.config.host,
+	var _SERVER={    "SERVER_ADDR":httpd.config.host,
 				       "SERVER_PORT":httpd.config.port,
 				       "SERVER_SOFTWARE":"node-httpd "+httpd.version,
 				       "DOCUMENT_ROOT":httpd.config.documentRoot,
@@ -87,51 +86,56 @@ function _init(req,res){
 				       "REQUEST_TIME":new Date().getTime()
 				      };
 	 for(var _i in req.headers){
-		  httpd.$_SERVER["HTTP-"+_i.toUpperCase()]=req.headers[_i];  
+		  _SERVER["HTTP-"+_i.toUpperCase()]=req.headers[_i];  
 	 }	
 	  
-	httpd.$_GET={};
-	if(httpd.$_SERVER['QUERY_STRING']){
-		httpd.$_GET=require('querystring').parse(httpd.$_SERVER['QUERY_STRING']);
+	var _GET={};
+	if(_SERVER['QUERY_STRING']){
+		_GET=require('querystring').parse(_SERVER['QUERY_STRING']);
 		
 	}
 	
-	httpd.sandbox = {require: require,
+	var sandbox = {   require: require,
 			            console: console,
-	                   __filename: httpd.filename,
-	                   res:httpd.res,
-	                   req:httpd.req,
-	                   echo:function(s){httpd.res.write(s+"");},
-	                   $_SERVER:httpd.$_SERVER,
-	                   $_GET:httpd.$_GET
+	                   __filename: filename,
+	                   res:res,
+	                   req:req,
+	                   echo:function(s){res.write(s+"");},
+	                   $_SERVER:_SERVER,
+	                   $_GET:_GET
 	                     };
 	  
-
-	  httpd.res.setHeader('server','node-httpd '+httpd.version);
-	  if(false===httpd.handAll.call(httpd)){
+     var runTime={'_SERVER':_SERVER,'_GET':_GET,'sandbox':sandbox,'req':req,'res':res,"config":config};
+     
+	  res.setHeader('server','node-httpd '+httpd.version);
+	  if(false===httpd.handAll.call(runTime)){
 	     return;
 	  }  
 	  if(httpd.handMap[p]){
-	    return httpd.handMap[p].call(httpd);
+	    return httpd.handMap[p].call(runTime);
 	  }
-	  if (httpd.req.method === "GET" || httpd.req.method === "HEAD") {
-	    handler_get(httpd.req, httpd.res);
+	  if(req.method === "GET" ||req.method === "HEAD"){
+     	    handler_get.call(runTime,req, res);
 	  }  
 }
 
 
 function hand_404() {
-   var msg="the request url "+decodeURI(httpd.req.url)+" is not on the server";
-   hand_error(404,msg);
+   var msg="the request url "+decodeURI(this.req.url)+" is not on the server";
+   hand_error.call(this,404,msg);
+}
+function hand_500(msg) {
+	msg="system error:"+msg||"";
+	hand_error.call(this,404,msg);
 }
 
 function hand_error(code,msg){
  var html="<html><head><title>"+code+" Exception</title></head>";
      html+="<body><h1>"+code+" Exception</h1><p style='color:red;font-size:20px'>"+msg+"</p></body></html>";
-  httpd.res.writeHead(code, { "Content-Type": "text/html;charset="+httpd.config.charset
+  this.res.writeHead(code, { "Content-Type": "text/html;charset="+this.config.charset
                      , "Content-Length": myu.strlen(html)
                      });
-  httpd.res.end(html);
+  this.res.end(html);
 }
 
 httpd.config._directoryIndex=myu.str2Array(httpd.config.directoryIndex);
@@ -147,10 +151,7 @@ httpd.getDirectoryIndexFile=function(dir){
   return null;
 };
 
-function hand_500(msg) {
-   msg="system error:"+msg||"";
-  hand_error(404,msg);
-}
+
 
 httpd.bind=function(path,handFn){
  httpd.handMap[path]=handFn;
@@ -159,39 +160,41 @@ httpd.bind=function(path,handFn){
 httpd.close = function () { server.close(); };
 
 httpd.readFile=function(filename){
-
+   var runTime=this;
    var ext=myu.extname(filename);
    if(httpd.fileHandler[ext]){
-     httpd.fileHandler[ext](filename);
+     httpd.fileHandler[ext].call(this,filename);
      return;
    }
    
   fs.readFile(filename,config.charset, function(err, data){
       if (err) {
-        hand_500(err.message);
+        hand_500.call(runTime,err.message);
       }else{
         headers = { "Content-Type": mime.getByExt(ext)};
-        httpd.res.writeHead(200, headers);
-        httpd.res.end(httpd.req.method === "HEAD" ? "" : data);
+        runTime.res.writeHead(200, headers);
+        runTime.res.end(runTime.req.method === "HEAD" ? "" : data);
       }
     });
 };
 
 httpd.fileHandlerBind('node',function(filename){
+   var runTime=this;
   fs.readFile(filename,config.charset, function(err, data){
       if (err) {
-        hand_500(err.message);
+        hand_500.call(runTime,err.message);
       }else{
          try{
-            require('vm').runInNewContext(data, httpd.sandbox, "myfile.vm");
+            require('vm').runInNewContext(data, runTime.sandbox, "myfile.vm");
          }catch(e){console.log(e);}
-         httpd.res.end("");
+         runTime.res.end("");
       }
   });
 });
 
 httpd.fileHandlerNsp=function(filename){
-    var compileJsPath=httpd.config.compileDir+"/"+httpd.$_SERVER['SCRIPT_NAME']+".js";
+	var runTime=this;
+    var compileJsPath=httpd.config.compileDir+"/"+this._SERVER['SCRIPT_NAME']+".js";
     myu.directoryCheck(path.dirname(compileJsPath));
     
     var stats_cur=fs.lstatSync(filename);
@@ -212,15 +215,15 @@ httpd.fileHandlerNsp=function(filename){
     
     function run_code(code){
      try{
-       require('vm').runInNewContext(code, httpd.sandbox, "myfile.vm");
+       require('vm').runInNewContext(code, runTime.sandbox, "myfile.vm");
       }catch(e){console.log(e);}
-      httpd.res.end("");
+      runTime.res.end("");
     }
     
     function compile_run(){
          fs.readFile(filename,config.charset, function(err, data){
             if (err) {
-               hand_500(err.message);
+               hand_500.call(runTime,err.message);
             }else{
                var code=myu.compileNsp(data);
                  fs.writeFile(compileJsPath,code,httpd.config.charset,function(){
@@ -236,6 +239,7 @@ httpd.fileHandlerBind('nsp',httpd.fileHandlerNsp);
 
 
 function handler_get(req,res){
+  var runTime=this;	
   var location=url.parse(req.url);
   location.pathname=decodeURI(location.pathname);
   var filename=config.documentRoot+location.pathname;
@@ -243,30 +247,30 @@ function handler_get(req,res){
     if(exists){
         fs.lstat(filename,function(err,stats){
             if (err) {
-                hand_500(err.message);
+                hand_500.call(runTime,err.message);
               }else{
                 if(stats.isFile()){
-                      httpd.readFile(filename);
+                      httpd.readFile.call(runTime,filename);
                 }else if(stats.isDirectory()){
                      var indexFile=httpd.getDirectoryIndexFile(filename);
                      if(indexFile){
-                          httpd.readFile(filename+"/"+indexFile);
+                          httpd.readFile.call(runTime,filename+"/"+indexFile);
                       }else if(httpd.config.indexes){
-                          list_dir();
+                          list_dir.call(runTime);
                          }
                      
                  }
               }  
           });  
     }else{
-       hand_404();
+       hand_404.call(runTime);
     }
   });
   
   function list_dir(){
       fs.readdir(filename,function(err,files){
             if (err) {
-                hand_500(err.message);
+                hand_500.call(runTime,err.message);
             }else{
                  files.sort();
                  if(location.pathname!='/'){
