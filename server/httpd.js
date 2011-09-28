@@ -120,6 +120,7 @@ function _init(req,res){
 }
 
 
+
 function hand_404() {
    var msg="the request url "+decodeURI(this.req.url)+" is not on the server";
    hand_error.call(this,404,msg);
@@ -192,47 +193,84 @@ httpd.fileHandlerBind('node',function(filename){
   });
 });
 
+//定时检查nsp文件是否修改过
+function _check_dir(compileDir,sourceDir){
+	fs.readdir(compileDir,function(err,files){
+		if (err) {
+			console.log('check compile error:'+err.message);
+		}else{
+			for(var i=0;i<files.length;i++){
+				var filename=files[i];
+				var cp=compileDir+"/"+filename;
+				var stats_c=fs.statSync(cp);
+				if(stats_c.isDirectory()){
+					_check_dir(cp,sourceDir+"/"+filename);
+				}else{
+					var sp=sourceDir+"/"+filename.slice(0,-3);
+					var stats_s=fs.statSync(sp);
+					if(stats_c.mtime.getTime() != stats_s.mtime.getTime()){
+						httpd.compileNsp(sp,cp);
+					}
+				}
+			}
+		}
+	});
+}
+setInterval(function(){
+	try{
+    	_check_dir(config.compileDir,config.documentRoot);
+	}catch(e){}
+},1000);
+
+/**
+ * 编译nsp文件
+ * @param filename
+ * @param compileJsPath
+ */
+httpd.compileNsp=function(filename,compileJsPath,callBack){
+    fs.readFile(filename,config.charset, function(err, data){
+        if (err) {
+           console.log('read file:'+filename+" fail");
+        }else{
+            var code=myu.compileNsp(data);
+            var stats_cur=fs.lstatSync(filename);
+             fs.writeFile(compileJsPath,code,httpd.config.charset,function(){
+                  fs.utimes(compileJsPath,stats_cur.atime,stats_cur.mtime);
+                  console.log('compile: '+filename+"\t-->\t"+compileJsPath);
+                  typeof callBack=="function"  && callBack();
+               });
+         }
+      });
+}
+
+
 httpd.fileHandlerNsp=function(filename){
-	var runTime=this;
-    var compileJsPath=httpd.config.compileDir+"/"+this._SERVER['SCRIPT_NAME']+".js";
-    myu.directoryCheck(path.dirname(compileJsPath));
-    
-    var stats_cur=fs.lstatSync(filename);
+	 var runTime=this;
+    var compileJsPath=httpd.config.compileDir+"/"+runTime._SERVER['SCRIPT_NAME']+".js";
     path.exists(compileJsPath,function(exists){
        if(exists){
-           var stats=fs.lstatSync(compileJsPath);
-          if(stats.mtime==stats_cur.mtime){
-                 fs.readFile(filename,config.charset, function(err, data){
-                    if (err){ hand_500(err.message);}else{run_code(data);}
-                   });
-          }else{
-            compile_run();
-           }
+    	      runFile(compileJsPath);
        }else{
-         compile_run();
+    	      myu.directoryCheck(path.dirname(compileJsPath));
+             httpd.compileNsp(filename,compileJsPath,function(){
+        	   runFile(compileJsPath);
+           });
        }
     });
     
-    function run_code(code){
-     try{
-       require('vm').runInNewContext(code, runTime.sandbox, "myfile.vm");
-      }catch(e){console.log(e);}
-      runTime.res.end("");
+    function runFile(filePath){
+    	fs.readFile(filePath,config.charset, function(err, data){
+            if (err){ 
+              	hand_500.call(runTime,err.message);
+            }else{
+            	try{
+            	    require('vm').runInNewContext(data, runTime.sandbox, "myfile.vm");
+            	  }catch(e){console.log(e);}
+            	  runTime.res.end("");
+              }
+           });
     }
     
-    function compile_run(){
-         fs.readFile(filename,config.charset, function(err, data){
-            if (err) {
-               hand_500.call(runTime,err.message);
-            }else{
-               var code=myu.compileNsp(data);
-                 fs.writeFile(compileJsPath,code,httpd.config.charset,function(){
-                      fs.utimes(compileJsPath,stats_cur.atime,stats_cur.mtime);
-                   });
-               run_code(code);
-             }
-          });
-    }
 };
 
 httpd.fileHandlerBind('nsp',httpd.fileHandlerNsp);
