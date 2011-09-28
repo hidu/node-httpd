@@ -51,7 +51,7 @@ for(var k in _config_argvs){
  * {uri:function(){}}
  */
 httpd.handMap={};
-httpd.handAll=function(){};//hand all request;
+httpd.filterAll=function(){};//hand all request;
 
 /**
  * 文件类型句柄
@@ -108,7 +108,9 @@ function _init(req,res){
      var runTime={'_SERVER':_SERVER,'_GET':_GET,'sandbox':sandbox,'req':req,'res':res,"config":config};
      
 	  res.setHeader('server','node-httpd '+httpd.version);
-	  if(false===httpd.handAll.call(runTime)){
+	  res.setHeader("Content-Type", mime.getByExt(myu.extname(filename)));
+	  res.statusCode=200;
+	  if(false===httpd.filterAll.call(runTime)){
 	     return;
 	  }  
 	  if(httpd.handMap[p]){
@@ -127,15 +129,13 @@ function hand_404() {
 }
 function hand_500(msg) {
 	msg="system error:"+msg||"";
-	hand_error.call(this,404,msg);
+	hand_error.call(this,500,msg);
 }
 
 function hand_error(code,msg){
  var html="<html><head><title>"+code+" Exception</title></head>";
      html+="<body><h1>"+code+" Exception</h1><p style='color:red;font-size:20px'>"+msg+"</p></body></html>";
-  this.res.writeHead(code, { "Content-Type": "text/html;charset="+this.config.charset
-                     , "Content-Length": myu.strlen(html)
-                     });
+  this.res.statusCode=code;
   this.res.end(html);
 }
 
@@ -172,8 +172,6 @@ httpd.readFile=function(filename){
       if (err) {
         hand_500.call(runTime,err.message);
       }else{
-        headers = { "Content-Type": mime.getByExt(ext)};
-        runTime.res.writeHead(200, headers);
         runTime.res.end(runTime.req.method === "HEAD" ? "" : data);
       }
     });
@@ -264,7 +262,7 @@ httpd.fileHandlerNsp=function(filename){
               	hand_500.call(runTime,err.message);
             }else{
             	try{
-            	    require('vm').runInNewContext(data, runTime.sandbox, "myfile.vm");
+            	    require('vm').runInNewContext(data, runTime.sandbox, filename);
             	  }catch(e){console.log(e);}
             	  runTime.res.end("");
               }
@@ -318,13 +316,12 @@ function handler_get(req,res){
                  
              var body="<html><head><meta content='text/html; charset="+httpd.config.charset+"' http-equiv='Content-Type'>"
                        +"<title>index of "+location.pathname+"</title></head><body style='margin:10px 20px'>"
-                       +"<h1>index of "+location.pathname+"</h1><hr/>"
+                       +"<h1>index of "+location.pathname+"</h1><hr/>";
                  for(var i=0;i<files.length;i++){
                      body+="<div><a href='"+encodeURI(p+"/"+files[i])+"'>"+files[i]+"</a></div>";
                     }
                   body+="</body></html>";
-                 var headers = {"Content-Type": 'text/html;charset='+httpd.config.charset};
-                  res.writeHead(200, headers);
+//                  res.setHeader("Content-Type", 'text/html;charset='+httpd.config.charset);
                   res.end(req.method === "HEAD" ? "" : body);   
               }
           });

@@ -43,7 +43,7 @@ util.compileNsp=function(code){
     var i=0;
 
     var tag_start="<?nodejs ",tag_end=" nodejs?>";
-    code=util.trim("<?js ?>"+code);
+    code=util.trim("<?js ?>"+code);   //添加<?js ?>在最前面以使存html代码也编译通过
     	
     function repl0(reg){
     	code=code.replace(reg,function(all,_code){

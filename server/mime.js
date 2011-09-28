@@ -25,7 +25,7 @@ var httpd=require("./httpd");
 var mime=exports;
 mime.types=types;
 mime.getByExt=function(ext,fallback,charset){
-    var m=mime.types[ext.toLowerCase()] || fallback || 'text/plain';
+    var m=mime.types[ext.toLowerCase()] || fallback || 'text/html';
     charset=charset||httpd.config.charset;
     if(!charset)return m;
     var isText=/^text\//;
