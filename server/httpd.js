@@ -317,11 +317,10 @@ function handler_get(req,res){
              var p=location.pathname.replace(/\/?$/,"");
                  
              var body="<html><head><meta content='text/html; charset="+httpd.config.charset+"' http-equiv='Content-Type'>"
-                       +"<title>index of "+location.pathname+"</title></head><body>"
-                       +"<h2>"+location.pathname+"</h2>"
-                       +"<table style='width:90%'><tr bgcolor='#c8ddf2'><th>Name</th><th>size</th><th>createTime</th></tr>\n";
+                       +"<title>index of "+location.pathname+"</title></head><body style='margin:10px 20px'>"
+                       +"<h1>index of "+location.pathname+"</h1><hr/>"
                  for(var i=0;i<files.length;i++){
-                     body+="<tr><td><a href='"+encodeURI(p+"/"+files[i])+"'>"+files[i]+"</a></td><td></td><td></td></tr>\n";
+                     body+="<div><a href='"+encodeURI(p+"/"+files[i])+"'>"+files[i]+"</a></div>";
                     }
                   body+="</body></html>";
                  var headers = {"Content-Type": 'text/html;charset='+httpd.config.charset};
@@ -334,9 +333,5 @@ function handler_get(req,res){
 };
 
 
-
-
-
 server.listen(Number(httpd.config.port), httpd.config.host);
 console.log("Server start at:http://"+(httpd.config.host||'127.0.0.1')+":"+httpd.config.port);
-

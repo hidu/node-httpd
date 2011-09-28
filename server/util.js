@@ -43,7 +43,7 @@ util.compileNsp=function(code){
     var i=0;
 
     var tag_start="<?nodejs ",tag_end=" nodejs?>";
-    code=util.trim(code);
+    code=util.trim("<?js ?>"+code);
     	
     function repl0(reg){
     	code=code.replace(reg,function(all,_code){
@@ -77,6 +77,9 @@ util.compileNsp=function(code){
     repl(reg4,true);
 
     code=code.replace(/^\s+|\s+$/,"");
+    
+    
+    
     var js="";
     code.replace(/code(\d+)/g,function(all,i){
       js+=matches[i]+"\n";

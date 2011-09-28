@@ -1,0 +1,23 @@
+<html>
+<head>
+<title>form_get</title>
+<style>
+#msg{border:5px solid #68caff;padding:20px;margin:5px;}
+</style>
+</head>
+<body>
+<form>
+您想说点什么？
+<textarea name='note'><?=$_GET['note']||"";?></textarea>
+<input type="submit" value="提交">
+</form>
+
+<br/><br/><br/><br/>
+<div>
+您刚才说了：
+<div id="msg">
+<?js echo($_GET['note']||"");?>
+</div>
+</div>
+</body>
+</html>

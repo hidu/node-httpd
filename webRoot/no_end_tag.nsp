@@ -1,0 +1,2 @@
+<?js
+echo((new Date()).toLocaleString());
