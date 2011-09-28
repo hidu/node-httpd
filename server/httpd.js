@@ -14,6 +14,7 @@ var fs = require('fs');
 var path=require('path');
 var url=require('url');
 var myu=require('./util');
+var qs=require('querystring');
 
 var http = require("http");
 
@@ -91,9 +92,9 @@ function _init(req,res){
 	  
 	var _GET={};
 	if(_SERVER['QUERY_STRING']){
-		_GET=require('querystring').parse(_SERVER['QUERY_STRING']);
-		
+		_GET=qs.parse(_SERVER['QUERY_STRING']);
 	}
+	req.$_GET=_GET;
 	
 	var sandbox = {   require: require,
 			            console: console,
@@ -104,7 +105,12 @@ function _init(req,res){
 	                   $_SERVER:_SERVER,
 	                   $_GET:_GET
 	                     };
-	  
+	
+	if(req.method === 'POST'){
+		var _data='';
+		req.on('data', function(chunk){_data += chunk;});
+	   req.on('end', function() {sandbox.$_POST=req.$_POST= qs.parse(_data);});
+	}
      var runTime={'_SERVER':_SERVER,'_GET':_GET,'sandbox':sandbox,'req':req,'res':res,"config":config};
      
 	  res.setHeader('server','node-httpd '+httpd.version);
@@ -116,9 +122,7 @@ function _init(req,res){
 	  if(httpd.handMap[p]){
 	    return httpd.handMap[p].call(runTime);
 	  }
-	  if(req.method === "GET" ||req.method === "HEAD"){
-     	    handler_get.call(runTime,req, res);
-	  }  
+     handler_default.call(runTime,req, res);
 }
 
 
@@ -239,7 +243,7 @@ httpd.compileNsp=function(filename,compileJsPath,callBack){
                });
          }
       });
-}
+};
 
 
 httpd.fileHandlerNsp=function(filename){
@@ -274,7 +278,7 @@ httpd.fileHandlerNsp=function(filename){
 httpd.fileHandlerBind('nsp',httpd.fileHandlerNsp);
 
 
-function handler_get(req,res){
+function handler_default(req,res){
   var runTime=this;	
   var location=url.parse(req.url);
   location.pathname=decodeURI(location.pathname);
