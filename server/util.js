@@ -43,7 +43,8 @@ util.compileNsp=function(code){
     var i=0;
 
     var tag_start="<?nodejs ",tag_end=" nodejs?>";
-
+    code=util.trim(code);
+    	
     function repl0(reg){
     	code=code.replace(reg,function(all,_code){
     		matches[i]=_code;
@@ -78,8 +79,10 @@ util.compileNsp=function(code){
     code=code.replace(/^\s+|\s+$/,"");
     var js="";
     code.replace(/code(\d+)/g,function(all,i){
-      js+=matches[i];
+      js+=matches[i]+"\n";
     });
+    var compileInfo="//compile at "+new Date().toLocaleString()+"\n";
+    js=compileInfo+js.replace(/\n+/gm,"\n");
     return js;
 };
 
@@ -90,5 +93,11 @@ util.directoryCheck=function(dir){
      util.directoryCheck(path.dirname(dir));
      fs.mkdirSync(dir,0777);
    }
+};
+
+//获取一个32位随机字符串
+util.randomStr=function(){
+	 var hash = require('crypto').createHash('md5');
+	 return hash.update(Math.random()+__dirname).digest('hex');
 };
 
