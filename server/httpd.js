@@ -103,7 +103,8 @@ function _init(req,res){
 	                   req:req,
 	                   echo:function(s){res.write(s+"");},
 	                   $_SERVER:_SERVER,
-	                   $_GET:_GET
+	                   $_GET:_GET,
+	                   $_POST:{}
 	                     };
 	
 	if(req.method === 'POST'){
