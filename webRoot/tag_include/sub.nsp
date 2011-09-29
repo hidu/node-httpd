@@ -1,3 +1,8 @@
 <?js
 echo("from sub.nsp");
 ?>
+<hr/>
+<div>这个参数a是由父页面include时传递而来:<?=a?></div>
+<script run=server>
+//include(__dirname+"/"+"sub1.nsp");
+</script>

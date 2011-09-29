@@ -1,0 +1,5 @@
+<hr/>
+<p>sub1.php:</p>
+<?js
+echo(new Date().getTime());
+?>

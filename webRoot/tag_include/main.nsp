@@ -1,2 +1,10 @@
+
 <?js
+
 echo("hello");
+var a="123";
+?>
+<hr/>
+<?js
+include(__dirname+'/sub.nsp',{a:a});
+include(__dirname+"/sub2.txt");

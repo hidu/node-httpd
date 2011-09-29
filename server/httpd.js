@@ -15,6 +15,7 @@ var path=require('path');
 var url=require('url');
 var myu=require('./util');
 var qs=require('querystring');
+var vm=require('vm');
 
 var http = require("http");
 
@@ -62,11 +63,56 @@ httpd.fileHandlerBind=function(fileType,handler){
   httpd.fileHandler[fileType]=handler;
 };
 
+/**
+ * 运行时包含文件
+ * @param filename
+ */
+function includeFile(filename,params){
+	var runTime=this;
+	if(params){
+		for(var n in params){
+			runTime[n]=params[n];
+		}
+	}
+	
+	this.__filename=filename;
+	this.__dirname=path.dirname(filename);
+	var ext=myu.extname(filename);
+	if(ext=='nsp'){
+		 var compileJsPath=httpd.getCompileJsPath(filename);
+		 if(path.existsSync(compileJsPath)){
+			 runJsFileSync(compileJsPath);
+		 }else{
+	         var code=httpd.compileNspSync(filename);
+			  try{
+		        vm.runInNewContext(code, runTime, filename);
+		     }catch(e){console.log(e);}
+		 }
+	}else if(ext=='node'){
+		 runJsFileSync(filename);
+	}else{
+		var code=fs.readFileSync(filename,config.charset);
+	    runTime.echo(code);
+	}
+	
+	function runJsFileSync(file){
+		var code=fs.readFileSync(file,config.charset);
+		try{
+	        vm.runInNewContext(code, runTime, filename);
+	     }catch(e){console.log(e);}
+	}
+};
+
+httpd.getScriptName=function(filename){
+	return path.relative(httpd.config.documentRoot,filename);
+}
+
 var i=0;
 var server = http.createServer(function(req, res){
   _init(req,res);
   console.log(i++);
 });
+
 
 function _init(req,res){
 	var location=url.parse(req.url);
@@ -79,7 +125,7 @@ function _init(req,res){
 				       "SERVER_SOFTWARE":"node-httpd "+httpd.version,
 				       "DOCUMENT_ROOT":httpd.config.documentRoot,
 				       "SCRIPT_FILENAME":filename,
-				       "SCRIPT_NAME":path.relative(httpd.config.documentRoot,filename),
+				       "SCRIPT_NAME":httpd.getScriptName(filename),
 				       "REQUEST_METHOD":req.method,
 				       "SERVER_PROTOCOL":"HTTP/1.1",
 				       "REQUEST_URI":req.url,
@@ -96,12 +142,15 @@ function _init(req,res){
 	}
 	req.$_GET=_GET;
 	
+	var runTime;
 	var sandbox = {   require: require,
 			            console: console,
 	                   __filename: filename,
+	                   __dirname: path.dirname(filename),
 	                   res:res,
 	                   req:req,
 	                   echo:function(s){res.write(s+"");},
+	                   include:function(filename,params){includeFile.call(sandbox,filename,params)}, 
 	                   $_SERVER:_SERVER,
 	                   $_GET:_GET,
 	                   $_POST:{}
@@ -112,8 +161,9 @@ function _init(req,res){
 		req.on('data', function(chunk){_data += chunk;});
 	   req.on('end', function() {sandbox.$_POST=req.$_POST= qs.parse(_data);});
 	}
-     var runTime={'_SERVER':_SERVER,'_GET':_GET,'sandbox':sandbox,'req':req,'res':res,"config":config};
-     
+    runTime={'_SERVER':_SERVER,'_GET':_GET,'sandbox':sandbox,'req':req,'res':res,"config":config};
+    
+    
 	  res.setHeader('server','node-httpd '+httpd.version);
 	  res.setHeader("Content-Type", mime.getByExt(myu.extname(filename)));
 	  res.statusCode=200;
@@ -182,6 +232,8 @@ httpd.readFile=function(filename){
     });
 };
 
+
+
 httpd.fileHandlerBind('node',function(filename){
    var runTime=this;
   fs.readFile(filename,config.charset, function(err, data){
@@ -189,7 +241,7 @@ httpd.fileHandlerBind('node',function(filename){
         hand_500.call(runTime,err.message);
       }else{
          try{
-            require('vm').runInNewContext(data, runTime.sandbox, "myfile.vm");
+            vm.runInNewContext(data, runTime.sandbox, filename);
          }catch(e){console.log(e);}
          runTime.res.end("");
       }
@@ -245,11 +297,32 @@ httpd.compileNsp=function(filename,compileJsPath,callBack){
          }
       });
 };
+/**
+ * 返回nsp文件编译后文件的路径
+ * @param fileName
+ * @returns {String}
+ */
+httpd.getCompileJsPath=function(fileName){
+	return httpd.config.compileDir+"/"+httpd.getScriptName(fileName)+".js";
+}
+
+httpd.compileNspSync=function(filename){
+	var compileJsPath=getCompileJsPath(filename);
+	
+	var data=fs.readFileSync(filename,config.charset);
+	var code=myu.compileNsp(data);
+   var stats_cur=fs.lstatSync(filename);
+   fs.writeFile(compileJsPath,code,config.charset,function(){
+           fs.utimes(compileJsPath,stats_cur.atime,stats_cur.mtime);
+           console.log('compile: '+filename+"\t-->\t"+compileJsPath);
+     });
+   return code;
+}
 
 
 httpd.fileHandlerNsp=function(filename){
 	 var runTime=this;
-    var compileJsPath=httpd.config.compileDir+"/"+runTime._SERVER['SCRIPT_NAME']+".js";
+    var compileJsPath=httpd.getCompileJsPath(filename);
     path.exists(compileJsPath,function(exists){
        if(exists){
     	      runFile(compileJsPath);
