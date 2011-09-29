@@ -83,7 +83,7 @@ function includeFile(filename,params){
 		 if(path.existsSync(compileJsPath)){
 			 runJsFileSync(compileJsPath);
 		 }else{
-	         var code=httpd.compileNspSync(filename);
+	         var code=httpd.compileNspSync.call(runTime,filename);
 			  try{
 		        vm.runInNewContext(code, runTime, filename);
 		     }catch(e){console.log(e);}
@@ -91,12 +91,12 @@ function includeFile(filename,params){
 	}else if(ext=='node'){
 		 runJsFileSync(filename);
 	}else{
-		var code=fs.readFileSync(filename,config.charset);
+		var code=fs.readFileSync(filename,runTime.config.charset);
 	    runTime.echo(code);
 	}
 	
 	function runJsFileSync(file){
-		var code=fs.readFileSync(file,config.charset);
+		var code=fs.readFileSync(file,runTime.config.charset);
 		try{
 	        vm.runInNewContext(code, runTime, filename);
 	     }catch(e){console.log(e);}
@@ -104,7 +104,7 @@ function includeFile(filename,params){
 };
 
 httpd.getScriptName=function(filename){
-	return path.relative(httpd.config.documentRoot,filename);
+	return path.relative(this.config.documentRoot,filename);
 }
 
 var i=0;
@@ -117,13 +117,14 @@ var server = http.createServer(function(req, res){
 function _init(req,res){
 	var location=url.parse(req.url);
 	var p=decodeURI(location.pathname);
+	var config=httpd.config;
 	
 	var filename=config.documentRoot+p;
 	
-	var _SERVER={    "SERVER_ADDR":httpd.config.host,
-				       "SERVER_PORT":httpd.config.port,
+	var _SERVER={    "SERVER_ADDR":config.host,
+				       "SERVER_PORT":config.port,
 				       "SERVER_SOFTWARE":"node-httpd "+httpd.version,
-				       "DOCUMENT_ROOT":httpd.config.documentRoot,
+				       "DOCUMENT_ROOT":config.documentRoot,
 				       "SCRIPT_FILENAME":filename,
 				       "SCRIPT_NAME":httpd.getScriptName(filename),
 				       "REQUEST_METHOD":req.method,
@@ -194,10 +195,9 @@ function hand_error(code,msg){
   this.res.end(html);
 }
 
-httpd.config._directoryIndex=myu.str2Array(httpd.config.directoryIndex);
 
 httpd.getDirectoryIndexFile=function(dir){
-  var indexes=httpd.config._directoryIndex;
+  var indexes=this.config.directoryIndex;
   for(var i=0;i<indexes.length;i++){
       var f=dir+"/"+indexes[i];
       if(path.existsSync(f)){
@@ -223,7 +223,7 @@ httpd.readFile=function(filename){
      return;
    }
    
-  fs.readFile(filename,config.charset, function(err, data){
+  fs.readFile(filename,runTime.config.charset, function(err, data){
       if (err) {
         hand_500.call(runTime,err.message);
       }else{
@@ -236,7 +236,7 @@ httpd.readFile=function(filename){
 
 httpd.fileHandlerBind('node',function(filename){
    var runTime=this;
-  fs.readFile(filename,config.charset, function(err, data){
+  fs.readFile(filename,runTime.config.charset, function(err, data){
       if (err) {
         hand_500.call(runTime,err.message);
       }else{
@@ -264,7 +264,7 @@ function _check_dir(compileDir,sourceDir){
 					var sp=sourceDir+"/"+filename.slice(0,-3);
 					var stats_s=fs.statSync(sp);
 					if(stats_c.mtime.getTime() != stats_s.mtime.getTime()){
-						httpd.compileNsp(sp,cp);
+						httpd.compileNsp.call(runTime,sp,cp);
 					}
 				}
 			}
@@ -283,13 +283,14 @@ setInterval(function(){
  * @param compileJsPath
  */
 httpd.compileNsp=function(filename,compileJsPath,callBack){
-    fs.readFile(filename,config.charset, function(err, data){
+	var runTime=this;
+    fs.readFile(filename,runTime.config.charset, function(err, data){
         if (err) {
            console.log('read file:'+filename+" fail");
         }else{
             var code=myu.compileNsp(data);
             var stats_cur=fs.lstatSync(filename);
-             fs.writeFile(compileJsPath,code,httpd.config.charset,function(){
+             fs.writeFile(compileJsPath,code,runTime.config.charset,function(){
                   fs.utimes(compileJsPath,stats_cur.atime,stats_cur.mtime);
                   console.log('compile: '+filename+"\t-->\t"+compileJsPath);
                   typeof callBack=="function"  && callBack();
@@ -303,16 +304,16 @@ httpd.compileNsp=function(filename,compileJsPath,callBack){
  * @returns {String}
  */
 httpd.getCompileJsPath=function(fileName){
-	return httpd.config.compileDir+"/"+httpd.getScriptName(fileName)+".js";
+	return this.config.compileDir+"/"+httpd.getScriptName.call(this,fileName)+".js";
 }
 
 httpd.compileNspSync=function(filename){
-	var compileJsPath=getCompileJsPath(filename);
+	var compileJsPath=getCompileJsPath.call(this,filename);
 	
-	var data=fs.readFileSync(filename,config.charset);
+	var data=fs.readFileSync(filename,this.config.charset);
 	var code=myu.compileNsp(data);
    var stats_cur=fs.lstatSync(filename);
-   fs.writeFile(compileJsPath,code,config.charset,function(){
+   fs.writeFile(compileJsPath,code,this.config.charset,function(){
            fs.utimes(compileJsPath,stats_cur.atime,stats_cur.mtime);
            console.log('compile: '+filename+"\t-->\t"+compileJsPath);
      });
@@ -328,14 +329,14 @@ httpd.fileHandlerNsp=function(filename){
     	      runFile(compileJsPath);
        }else{
     	      myu.directoryCheck(path.dirname(compileJsPath));
-             httpd.compileNsp(filename,compileJsPath,function(){
+             httpd.compileNsp.call(runTime,filename,compileJsPath,function(){
         	   runFile(compileJsPath);
            });
        }
     });
     
     function runFile(filePath){
-    	fs.readFile(filePath,config.charset, function(err, data){
+    	fs.readFile(filePath,runTime.config.charset, function(err, data){
             if (err){ 
               	hand_500.call(runTime,err.message);
             }else{
@@ -366,10 +367,10 @@ function handler_default(req,res){
                 if(stats.isFile()){
                       httpd.readFile.call(runTime,filename);
                 }else if(stats.isDirectory()){
-                     var indexFile=httpd.getDirectoryIndexFile(filename);
+                     var indexFile=httpd.getDirectoryIndexFile.call(runTime,filename);
                      if(indexFile){
                           httpd.readFile.call(runTime,filename+"/"+indexFile);
-                      }else if(httpd.config.indexes){
+                      }else if(runTime.config.indexes){
                           list_dir.call(runTime);
                          }
                      
@@ -399,7 +400,6 @@ function handler_default(req,res){
                      body+="<div><a href='"+encodeURI(p+"/"+files[i])+"'>"+files[i]+"</a></div>";
                     }
                   body+="</body></html>";
-//                  res.setHeader("Content-Type", 'text/html;charset='+httpd.config.charset);
                   res.end(req.method === "HEAD" ? "" : body);   
               }
           });
