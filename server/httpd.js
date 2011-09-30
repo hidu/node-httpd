@@ -8,7 +8,7 @@
 *
 */
 var mime=require("./mime"),
-//    config=require('./config'),
+    config=require('./config'),
     url = require("url"),
     fs = require('fs'),
     path=require('path'),
@@ -20,7 +20,6 @@ var mime=require("./mime"),
 
 var httpd = exports;
 httpd.version='1.0';
-//httpd.config=config;
 var vhosts=require('./vhosts');
 
 /*
@@ -106,8 +105,7 @@ function includeFile(filename,params){
 
 httpd.getScriptName=function(documentRoot,filename){
 	return path.relative(documentRoot,filename);
-}
-
+};
 
 
 function requestListener(req,res){
@@ -145,7 +143,7 @@ function requestListener(req,res){
 	                   res:res,
 	                   req:req,
 	                   echo:function(s){res.write(s+"");},
-	                   include:function(filename,params){includeFile.call(runTime,filename,params)}, 
+	                   include:function(filename,params){includeFile.call(runTime,filename,params);}, 
 	                   $_SERVER:_SERVER,
 	                   $_GET:_GET,
 	                   $_POST:{}
@@ -245,34 +243,6 @@ httpd.fileHandlerBind('node',function(filename){
   });
 });
 
-//定时检查nsp文件是否修改过
-function _check_dir(compileDir,sourceDir){
-	fs.readdir(compileDir,function(err,files){
-		if (err) {
-			console.log('check compile error:'+err.message);
-		}else{
-			for(var i=0;i<files.length;i++){
-				var filename=files[i];
-				var cp=compileDir+"/"+filename;
-				var stats_c=fs.statSync(cp);
-				if(stats_c.isDirectory()){
-					_check_dir(cp,sourceDir+"/"+filename);
-				}else{
-					var sp=sourceDir+"/"+filename.slice(0,-3);
-					var stats_s=fs.statSync(sp);
-					if(stats_c.mtime.getTime() != stats_s.mtime.getTime()){
-						httpd.compileNsp(sp,cp,'utf-8');
-					}
-				}
-			}
-		}
-	});
-}
-setInterval(function(){
-	try{
-    	_check_dir(config.compileDir,config.documentRoot);
-	}catch(e){}
-},1000);
 
 /**
  * 编译nsp文件
@@ -301,7 +271,7 @@ httpd.compileNsp=function(filename,compileJsPath,charset,callBack){
  */
 httpd.getCompileJsPath=function(fileName){
 	return this.config.compileDir+"/"+httpd.getScriptName(this.config.documentRoot,fileName)+".js";
-}
+};
 
 httpd.compileNspSync=function(filename){
 	var compileJsPath=httpd.getCompileJsPath.call(this,filename);
@@ -313,7 +283,7 @@ httpd.compileNspSync=function(filename){
            console.log('compile: '+filename+"\t-->\t"+compileJsPath);
      });
    return code;
-}
+};
 
 httpd.fileHandlerNsp=function(filename){
 	 var runTime=this;
@@ -401,4 +371,47 @@ for(var port in vhosts.ports){
 	var server = http.createServer(requestListener);
 	server.listen(Number(port));
 	console.log("Server start at:http://127.0.0.1:"+port);
+}
+
+//定时检查nsp文件是否修改过
+function _check_dir(compileDir,sourceDir){
+//	console.log(compileDir+"-->"+sourceDir);
+	if(!path.existsSync(compileDir))return;
+	fs.readdir(compileDir,function(err,files){
+		if (err) {
+			console.log('check compile error:'+err.message);
+		}else{
+			for(var i=0;i<files.length;i++){
+				var filename=files[i];
+				var cp=compileDir+"/"+filename;
+				var stats_c=fs.statSync(cp);
+				if(stats_c.isDirectory()){
+					_check_dir(cp,sourceDir+"/"+filename);
+				}else{
+					var sp=sourceDir+"/"+filename.slice(0,-3);
+					var stats_s=fs.statSync(sp);
+					if(stats_c.mtime.getTime() != stats_s.mtime.getTime()){
+						httpd.compileNsp(sp,cp,'utf-8');
+					}
+				}
+			}
+		}
+	});
+}
+if(config.autoCompileCheck){
+	var uniqueDocuments={};
+	for(var i=0;i<vhosts.items.length;i++){
+		var item=vhosts.items[i];
+		var k=myu.md5(item['compileDir']);
+		uniqueDocuments[k]=[item['compileDir'],item['documentRoot']];
+	}
+	for(var k in uniqueDocuments){
+		(function(sc){
+			setInterval(function(){
+				try{
+			    	_check_dir(sc[0],sc[1]);
+				}catch(e){}
+			},1000);
+		})(uniqueDocuments[k]);
+	}
 }

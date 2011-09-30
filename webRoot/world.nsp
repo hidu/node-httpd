@@ -33,7 +33,6 @@ var a=require('util').inspect($_SERVER);
 res.write(a);
 </script>
 </pre>
-
 <pre>
 $_GET:
 <script run=server>
