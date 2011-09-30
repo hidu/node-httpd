@@ -8,7 +8,7 @@
 *
 */
 var mime=require("./mime"),
-    config=require('./config'),
+//    config=require('./config'),
     url = require("url"),
     fs = require('fs'),
     path=require('path'),
@@ -20,7 +20,8 @@ var mime=require("./mime"),
 
 var httpd = exports;
 httpd.version='1.0';
-httpd.config=config;
+//httpd.config=config;
+var vhosts=require('./vhosts');
 
 /*
 *get the param
@@ -29,24 +30,24 @@ httpd.config=config;
 * set the port as 80,all the param support see "_config_argvs"
 *
 */
-httpd.argvs=(function(){
-    var argvs={};
-    var _argvs=process.ARGV.slice(2);
-    for(var i=0;i<_argvs.length;i++){
-      var k=_argvs[i].substring(1,2);
-      argvs[k]=_argvs[i].substring(2);
-    }
-    return argvs;
-})();
-httpd.getArg=function(arg){return httpd.argvs[arg]||'';}
-
-var _config_argvs={'p':'port','h':'host','d':'documentRoot','c':'charset'};
-for(var k in _config_argvs){
-    var _k=_config_argvs[k];
-    var v=httpd.getArg(_k);
-    if((v+"").length>0)
-    httpd.config[_k]=v;	
-}
+//httpd.argvs=(function(){
+//    var argvs={};
+//    var _argvs=process.ARGV.slice(2);
+//    for(var i=0;i<_argvs.length;i++){
+//      var k=_argvs[i].substring(1,2);
+//      argvs[k]=_argvs[i].substring(2);
+//    }
+//    return argvs;
+//})();
+//httpd.getArg=function(arg){return httpd.argvs[arg]||'';}
+//
+//var _config_argvs={'p':'port','h':'host','d':'documentRoot','c':'charset'};
+//for(var k in _config_argvs){
+//    var _k=_config_argvs[k];
+//    var v=httpd.getArg(_k);
+//    if((v+"").length>0)
+//    httpd.config[_k]=v;	
+//}
 
 /**
  * {uri:function(){}}
@@ -107,12 +108,12 @@ httpd.getScriptName=function(documentRoot,filename){
 	return path.relative(documentRoot,filename);
 }
 
-var server = http.createServer(requestListener);
+
 
 function requestListener(req,res){
+	var config=vhosts.getConfig(req.headers.host);
 	var location=url.parse(req.url);
 	var p=decodeURI(location.pathname);
-	var config=httpd.config;
 	var filename=config.documentRoot+p;
 	
 	var _SERVER={    "SERVER_ADDR":config.host,
@@ -130,7 +131,6 @@ function requestListener(req,res){
 	 for(var _i in req.headers){
 		  _SERVER["HTTP-"+_i.toUpperCase()]=req.headers[_i];  
 	 }	
-	  
 	var _GET={};
 	if(_SERVER['QUERY_STRING']){
 		_GET=qs.parse(_SERVER['QUERY_STRING']);
@@ -210,7 +210,7 @@ httpd.bind=function(path,handFn){
  httpd.handMap[path]=handFn;
 };
 
-httpd.close = function () { server.close(); };
+//httpd.close = function () { server.close(); };
 
 httpd.readFile=function(filename){
    var runTime=this;
@@ -315,10 +315,9 @@ httpd.compileNspSync=function(filename){
    return code;
 }
 
-httpd.caches={};
 httpd.fileHandlerNsp=function(filename){
 	 var runTime=this;
-    var compileJsPath=httpd.getCompileJsPath(filename);
+    var compileJsPath=httpd.getCompileJsPath.call(this,filename);
     path.exists(compileJsPath,function(exists){
        if(exists){
     	      runFile(compileJsPath);
@@ -398,7 +397,8 @@ function handler_default(req,res){
   }
   
 };
-
-
-server.listen(Number(httpd.config.port), httpd.config.host);
-console.log("Server start at:http://"+(httpd.config.host||'127.0.0.1')+":"+httpd.config.port);
+for(var port in vhosts.ports){
+	var server = http.createServer(requestListener);
+	server.listen(Number(port));
+	console.log("Server start at:http://127.0.0.1:"+port);
+}

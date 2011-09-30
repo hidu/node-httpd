@@ -9,12 +9,13 @@
 */
 var config=exports;
 var path=require('path');
-config.port=8080;
-config.host=null;
-config.serverName=null;
-config.serverAlias=null;
-config.documentRoot=path.dirname(__dirname)+"/webRoot";
-config.indexes=true;              //是否列出目录
-config.charset='utf-8';           //默认文件编码   
-config.directoryIndex=['index.html','index.htm'];
-config.compileDir=path.dirname(__dirname)+"/compile";
+var defaultHost={};
+defaultHost.port=8080;
+defaultHost.serverName=null;
+defaultHost.documentRoot=path.dirname(__dirname)+"/webRoot";
+defaultHost.indexes=true;              //是否列出目录
+defaultHost.charset='utf-8';           //默认文件编码   
+defaultHost.directoryIndex=['index.html','index.htm'];
+defaultHost.compileDir=path.dirname(__dirname)+"/compile";
+
+config.defaultHost=defaultHost;
