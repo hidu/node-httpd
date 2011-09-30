@@ -99,9 +99,12 @@ util.directoryCheck=function(dir){
    }
 };
 
+util.md5=function(str){
+	var hash = require('crypto').createHash('md5');
+	return hash.update(str+"").digest('hex');
+};
 //获取一个32位随机字符串
 util.randomStr=function(){
-	 var hash = require('crypto').createHash('md5');
-	 return hash.update(Math.random()+__dirname).digest('hex');
+	 return util.md5(Math.random()+__dirname);
 };
 

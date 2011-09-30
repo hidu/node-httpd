@@ -1,5 +1,5 @@
 run:
-node httpd.js
+node server/httpd.js
 
 the default config file:
 config.js

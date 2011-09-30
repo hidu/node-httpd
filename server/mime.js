@@ -20,13 +20,11 @@ for(var i=0;i<tmp.length;i++){
      types[m[j]]=m[0];
    }
 }
-var httpd=require("./httpd");
 
 var mime=exports;
 mime.types=types;
-mime.getByExt=function(ext,fallback,charset){
+mime.getByExt=function(ext,charset,fallback){
     var m=mime.types[ext.toLowerCase()] || fallback || 'text/html';
-    charset=charset||httpd.config.charset;
     if(!charset)return m;
     var isText=/^text\//;
     if(isText.test(m))return m+";charset="+charset;
