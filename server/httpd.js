@@ -113,8 +113,13 @@ function requestListener(req,res){
 	var location=url.parse(req.url);
 	var p=decodeURI(location.pathname);
 	var filename=config.documentRoot+p;
+	var _host=req.headers.host.split(":");
+	var hostname=_host[0],port=_host[1];
+	var request_time=new Date().getTime();
 	
-	var _SERVER={    "SERVER_ADDR":config.host,
+	console.log(request_time+" "+req.method+" "+req.headers.host+req.url);
+	
+	var _SERVER={    "SERVER_ADDR":hostname,
 				       "SERVER_PORT":config.port,
 				       "SERVER_SOFTWARE":"node-httpd "+httpd.version,
 				       "DOCUMENT_ROOT":config.documentRoot,
@@ -124,7 +129,7 @@ function requestListener(req,res){
 				       "SERVER_PROTOCOL":"HTTP/1.1",
 				       "REQUEST_URI":req.url,
 				       "QUERY_STRING":location['query']||"",
-				       "REQUEST_TIME":new Date().getTime()
+				       "REQUEST_TIME":request_time
 				      };
 	 for(var _i in req.headers){
 		  _SERVER["HTTP-"+_i.toUpperCase()]=req.headers[_i];  
@@ -151,7 +156,7 @@ function requestListener(req,res){
 	
 	if(req.method === 'POST'){
 		var _data='';
-		req.on('data', function(chunk){_data += chunk;});
+	    req.on('data', function(chunk){_data += chunk;});
 	    req.on('end', function() {sandbox.$_POST=req.$_POST= qs.parse(_data);});
 	}
     runTime={'_SERVER':_SERVER,'_GET':_GET,'sandbox':sandbox,'req':req,'res':res,"config":config,"location":location};
@@ -334,24 +339,34 @@ httpd.fileHandlerBind('nsp',httpd.fileHandlerNsp);
 function handler_default(req,res){
   var runTime=this;	
   var filename=runTime._SERVER.SCRIPT_FILENAME;
-  fs.lstat(filename,function(err,stats){
-      if(err){
-    	  hand_404.call(runTime);
-      }else{
-        if(stats.isFile()){
-              httpd.readFile.call(runTime,filename);return;
-        }else if(stats.isDirectory()){
-             var indexFile=httpd.getDirectoryIndexFile.call(runTime,filename);
-             if(indexFile){
-                  httpd.readFile.call(runTime,filename+"/"+indexFile);
-              }else if(runTime.config.indexes){
-                  list_dir();
-                 }
-             
-         }
-      }  
-   });  
-   
+  function fslstat(filename){
+	  fs.lstat(filename,function(err,stats){
+	      if(err){
+	    	  hand_404.call(runTime);
+	      }else{
+	    	 if(stats.isFile()){
+	              httpd.readFile.call(runTime,filename);return;
+	        }else if(stats.isDirectory()){
+	             var indexFile=httpd.getDirectoryIndexFile.call(runTime,filename);
+	             if(indexFile){
+	                  httpd.readFile.call(runTime,filename+"/"+indexFile);
+	              }else if(runTime.config.indexes){
+	                  list_dir();
+	                 }
+	             
+	         }else if(stats.isSymbolicLink){
+	    		 fs.readlink(filename,function(err1, linkString){
+	    			 if(err1){
+	    				 console.log(err1.message);
+	    			 }else{
+	    				fslstat(linkString); 
+	    			 }
+	    		 });
+	    	 }
+	      }  
+	   });  
+  };
+  fslstat(filename); 
   
   function list_dir(){
 	  location=runTime.location;

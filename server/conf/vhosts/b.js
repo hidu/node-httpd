@@ -1,3 +1,3 @@
 var config=exports;
 config.documentRoot="/data/www";
-config.serverName=["*.hongtao3.com",'c'];
+config.serverName=["*.example.com",'c.example.com'];

@@ -44,6 +44,7 @@ if(require('path').existsSync(vhostDir)){
 hosts.ports=ports;
 
 var serverNames={},host_ports=[];
+
 for(var i=0;i<items.length;i++){
 	if(!items[i]['compileDir']){
     	items[i]['compileDir']=_config.compileDir+"/"+path.relative(_config.compileDir,items[i]['documentRoot']).replace(/\W/gi,"");
@@ -61,9 +62,17 @@ for(var i=0;i<items.length;i++){
 	}
 }
 
+var serverNames_extensive={};//泛域名配置项
+for(var _name in serverNames){
+	if(_name.match(/^\*\./)){
+		serverNames_extensive[_name.substring(2)]=serverNames[_name];
+	}
+}
+
 hosts.items=items;
 
 hosts.serverNames=serverNames;
+hosts.serverNames_extensive=serverNames_extensive;
 
 //console.log(items);
 //console.log(serverNames);
@@ -82,14 +91,32 @@ hosts.getConfig=function(host){
 	
 	if(nameIds && portsIds){
 		for(var i=0;i<portsIds.length;i++){
-			for(var j=0;j<nameIds.length;j++){
-				if(portsIds[i]==nameIds[j]){
-					k=portsIds[i];
+			if(!k){
+				for(var j=0;j<nameIds.length;j++){
+					if(portsIds[i]==nameIds[j]){
+						k=portsIds[i];break;
+					}
 				}
 			}
 		}
 	}else if(portsIds && hosts.serverNames && !(/\.\d+$/.test(serverName))){  //处理 *.example.com   *.abc.example.com
-		//@todo
+		var _name_split=serverName.split(".");
+		while(_name_split && !k){
+			_name_split.shift();
+			var _name=_name_split.join(".");
+			nameIds=hosts.serverNames_extensive[_name]||[];
+			if(nameIds){
+				for(var i=0;i<portsIds.length;i++){
+					if(!k){
+						for(var j=0;j<nameIds.length;j++){
+							if(portsIds[i]==nameIds[j]){
+								k=portsIds[i];break;
+							}
+						}
+					}
+				}
+			}
+		}
 	}else{
 		k=portsIds[0];
 	}
