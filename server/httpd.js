@@ -418,6 +418,7 @@ if(config.autoCompileCheck){
 	}
 	for(var k in uniqueDocuments){
 		(function(sc){
+			console.log('autoCompile: '+sc[1]+"--->"+sc[0]);
 			setInterval(function(){
 				try{
 			    	_check_dir(sc[0],sc[1]);

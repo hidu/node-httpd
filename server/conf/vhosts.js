@@ -45,7 +45,9 @@ hosts.ports=ports;
 
 var serverNames={},host_ports=[];
 for(var i=0;i<items.length;i++){
-	items[i]['compileDir']=_config.compileDir+"/"+path.relative(_config.compileDir,items[i]['documentRoot']).replace(/\W/gi,"");
+	if(!items[i]['compileDir']){
+    	items[i]['compileDir']=_config.compileDir+"/"+path.relative(_config.compileDir,items[i]['documentRoot']).replace(/\W/gi,"");
+	}
 	var _name=items[i]['serverName'];
 	if(_name && _name.length){
 		if(typeof _name=='string'){
