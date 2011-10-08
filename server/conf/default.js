@@ -20,5 +20,12 @@ defaultHost.documentRoot=serverRoot+"/webRoot";
 defaultHost.indexes=true;              //是否列出目录
 defaultHost.charset='utf-8';           //默认文件编码   
 defaultHost.directoryIndex=['index.html','index.htm'];
+defaultHost.aclFunction=function(){
+	if(this.basename=='.htaccess'){
+		this.res.statusCode=403;
+		return false;
+	}
+}
+
 config.defaultHost=defaultHost;
 config.serverRoot=serverRoot;

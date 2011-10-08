@@ -22,31 +22,6 @@ var httpd = exports;
 httpd.version='1.0';
 var vhosts=require('./conf/vhosts');
 
-/*
-*get the param
-*example:
-*   node httpd.js -p80
-* set the port as 80,all the param support see "_config_argvs"
-*
-*/
-//httpd.argvs=(function(){
-//    var argvs={};
-//    var _argvs=process.ARGV.slice(2);
-//    for(var i=0;i<_argvs.length;i++){
-//      var k=_argvs[i].substring(1,2);
-//      argvs[k]=_argvs[i].substring(2);
-//    }
-//    return argvs;
-//})();
-//httpd.getArg=function(arg){return httpd.argvs[arg]||'';}
-//
-//var _config_argvs={'p':'port','h':'host','d':'documentRoot','c':'charset'};
-//for(var k in _config_argvs){
-//    var _k=_config_argvs[k];
-//    var v=httpd.getArg(_k);
-//    if((v+"").length>0)
-//    httpd.config[_k]=v;	
-//}
 
 /**
  * {uri:function(){}}
@@ -159,8 +134,14 @@ function requestListener(req,res){
 	    req.on('data', function(chunk){_data += chunk;});
 	    req.on('end', function() {sandbox.$_POST=req.$_POST= qs.parse(_data);});
 	}
-    runTime={'_SERVER':_SERVER,'_GET':_GET,'sandbox':sandbox,'req':req,'res':res,"config":config,"location":location};
+    runTime={'_SERVER':_SERVER,'_GET':_GET,'sandbox':sandbox,
+    		   'req':req,'res':res,"config":config,"location":location,
+    		   "filename":filename,"basename":path.basename(filename)};
     
+    if(config.aclFunction.call(runTime)===false){
+    	res.end();
+    	return;
+    }
     
 	  res.setHeader('server','node-httpd '+httpd.version);
 	  res.setHeader('Date',new Date().toUTCString());
@@ -384,7 +365,9 @@ function handler_default(req,res){
                        +"<title>index of "+location.pathname+"</title></head><body style='margin:10px 20px'>"
                        +"<h1>index of "+location.pathname+"</h1><hr/>";
                  for(var i=0;i<files.length;i++){
+                	 if(!files[i].match(/^\./)){
                      body+="<div><a href='"+encodeURI(p+"/"+files[i])+"'>"+files[i]+"</a></div>";
+                	 }
                     }
                   body+="</body></html>";
                   res.end(req.method === "HEAD" ? "" : body);   
