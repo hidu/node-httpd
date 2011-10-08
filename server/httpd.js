@@ -8,7 +8,7 @@
 *
 */
 var mime=require("./mime"),
-    config=require('./config'),
+    config=require('./conf/default'),
     url = require("url"),
     fs = require('fs'),
     path=require('path'),
@@ -20,7 +20,7 @@ var mime=require("./mime"),
 
 var httpd = exports;
 httpd.version='1.0';
-var vhosts=require('./vhosts');
+var vhosts=require('./conf/vhosts');
 
 /*
 *get the param
@@ -158,6 +158,7 @@ function requestListener(req,res){
     
     
 	  res.setHeader('server','node-httpd '+httpd.version);
+	  res.setHeader('Date',new Date().toUTCString());
 	  res.setHeader("Content-Type", mime.getByExt(myu.extname(filename),config.charset));
 	  res.statusCode=200;
 	  if(false===httpd.filterAll.call(runTime)){
@@ -222,6 +223,14 @@ httpd.readFile=function(filename){
       if (err) {
         hand_500.call(runTime,err.message);
       }else{
+    	 var _md5 =myu.md5(data);
+    	 runTime.res.setHeader('Etag',_md5);
+    	 var _inm=runTime.req.headers['if-none-match']||"";
+    	 if(_inm && _inm==_md5){
+    		 runTime.res.statusCode=304;
+    		 runTime.res.end();
+    		 return;
+    	 }
         runTime.res.end(runTime.req.method === "HEAD" ? "" : data);
       }
     });
@@ -231,6 +240,7 @@ httpd.readFile=function(filename){
 
 httpd.fileHandlerBind('node',function(filename){
    var runTime=this;
+   myu.headerNoCache(runTime.res);
   fs.readFile(filename,runTime.config.charset, function(err, data){
       if (err) {
         hand_500.call(runTime,err.message);
@@ -287,6 +297,7 @@ httpd.compileNspSync=function(filename){
 
 httpd.fileHandlerNsp=function(filename){
 	 var runTime=this;
+	 myu.headerNoCache(runTime.res);
     var compileJsPath=httpd.getCompileJsPath.call(this,filename);
     path.exists(compileJsPath,function(exists){
        if(exists){

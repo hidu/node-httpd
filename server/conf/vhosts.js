@@ -4,7 +4,7 @@ var path=require('path');
 var items=[],
     ports={},
     fs=require('fs'),
-    _config=require('./config'),
+    _config=require('./default'),
     defaultHost=_config.defaultHost,
     vhostDir=__dirname+"/vhosts/";
 

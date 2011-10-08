@@ -108,3 +108,8 @@ util.randomStr=function(){
 	 return util.md5(Math.random()+__dirname);
 };
 
+util.headerNoCache=function(res){
+	 res.setHeader('Expires',"Thu, 19 Nov 1985 08:52:00 GMT");
+	 res.setHeader('Cache-Control',"no-store, no-cache, must-revalidate, post-check=0, pre-check=0");
+	 res.setHeader('Pragma',"no-cache");
+}
