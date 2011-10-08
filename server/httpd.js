@@ -16,7 +16,8 @@ var mime=require("./mime"),
     myu=require('./util'),
     qs=require('querystring'),
     vm=require('vm'),
-    http = require("http");
+    http = require("http"),
+    cookie=require("./cookie");
 
 var httpd = exports;
 httpd.version='1.0';
@@ -114,7 +115,8 @@ function requestListener(req,res){
 		_GET=qs.parse(_SERVER['QUERY_STRING']);
 	}
 	req.$_GET=_GET;
-	
+	var _COOKIE=cookie.getAllCookie(req);
+
 	var runTime;
 	var sandbox = {   require: require,
 			            console: console,
@@ -126,7 +128,9 @@ function requestListener(req,res){
 	                   include:function(filename,params){includeFile.call(runTime,filename,params);}, 
 	                   $_SERVER:_SERVER,
 	                   $_GET:_GET,
-	                   $_POST:{}
+	                   $_POST:{},
+	                   $_COOKIE:_COOKIE,
+	                   setcookie:function(key,value,expire,properties){cookie.setcookie(res,key,value,expire,properties);}
 	                     };
 	
 	if(req.method === 'POST'){
