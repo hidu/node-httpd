@@ -91,10 +91,9 @@ function requestListener(req,res){
 	var filename=config.documentRoot+p;
 	var _host=req.headers.host.split(":");
 	var hostname=_host[0],port=_host[1];
-	var request_time=new Date().getTime();
 	
-	console.log(request_time+" "+req.method+" "+req.headers.host+req.url);
-	
+	console.log(req.client.remoteAddress+" - - ["+new Date().toLocaleString()+"] \""+req.method+" "+req.url+"\" \"http://"+req.headers.host+"\" \""+req.headers['user-agent']+"\"");
+
 	var _SERVER={    "SERVER_ADDR":hostname,
 				       "SERVER_PORT":config.port,
 				       "SERVER_SOFTWARE":"node-httpd "+httpd.version,
@@ -102,10 +101,12 @@ function requestListener(req,res){
 				       "SCRIPT_FILENAME":filename,
 				       "SCRIPT_NAME":httpd.getScriptName(config.documentRoot,filename),
 				       "REQUEST_METHOD":req.method,
-				       "SERVER_PROTOCOL":"HTTP/1.1",
+				       "SERVER_PROTOCOL":"HTTP/"+req.httpVersion,
 				       "REQUEST_URI":req.url,
+				       "REMOTE_ADDR":req.client.remoteAddress,
+				       "REMOTE_PORT":req.client.remotePort,
 				       "QUERY_STRING":location['query']||"",
-				       "REQUEST_TIME":request_time
+				       "REQUEST_TIME":new Date().getTime()
 				      };
 	 for(var _i in req.headers){
 		  _SERVER["HTTP-"+_i.toUpperCase()]=req.headers[_i];  
