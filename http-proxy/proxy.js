@@ -6,33 +6,44 @@
  * @version  20111009 1.0
  */
 var   http = require('http');
+var   https = require('https');
 var   url=require('url');
 var   fs=require('fs');
 var   path=require('path');
 var zlib = require('zlib');
 
-
 var PORT=5000, //端口
     TIMEOUT=30, //超时时间 30秒
-    CACHE_ROOT="/tmp/node-proxy/";
+    CACHE_ROOT="/tmp/node-proxy/",  //环境根目录
+    SAVE_CACHE=true;                //是否缓存内容
 
 console.log("proxy start width port:"+PORT+" cache dir is:"+CACHE_ROOT);
 
 http.createServer(function(req,res){
-	 console.log(req.url);
+	 console.log(req.method,req.url);
+	 
 	 var _url=url.parse(req.url);
 	 var _host=req.headers.host.split(":");
-	 
+	 var headers=req.headers;
+	 delete headers['accept-encoding'];
 	 var option={'host':_host[0],
 			      'port':Number(_host[1]||'80'),
 			      'path':_url['pathname']+(_url['search']||""),
 			      'method':req.method,
-			      'headers':req.headers
+			      'headers':headers
 			      };
-	 var needCache=canCache(req.url),
+	 var needCache=req.method=="GET" && SAVE_CACHE && canCache(req.url),
 	     cache_file=null;
 	 
+	 res.setHeader('x-cache','node-proxy-cache');
+	 
 	 if(needCache){
+		 if(req.headers['if-none-match'] || req.headers['if-modified-since']){
+			 res.statusCode=304;
+			 res.end();
+			 return;
+		 }
+		 
 		 var filename=req.url.replace(/^([\s\S]+\:\/\/)/,'').replace(/(\?[\s\S]*)$/,"");
 		 var _ext=path.extname(filename);
 		 if(!_ext|| _ext==".")filename+='/index.html';
@@ -40,9 +51,8 @@ http.createServer(function(req,res){
 			 filename=path.dirname(filename)+"/"+md5(filename);
 		 }
 		 cache_file=CACHE_ROOT+filename;
-		 console.log(cache_file);
+
 		 if(path.existsSync(cache_file)){
-			 res.setHeader('x-cache','node-proxy-cache');
 			 fs.readFile(cache_file,function(e,data){
 				 res.end(data);
 			 });
@@ -51,13 +61,18 @@ http.createServer(function(req,res){
 	 }
 	 
 	 var clientReq=http.request(option);
-	 clientReq.end();
+	 req.on('data',function(c){
+		 clientReq.write(c);
+	 });
+	 req.on('end',function(){
+		 clientReq.end();
+	 });
 	 
     var timer = null;
 	function startTimer() {
 		timer = setTimeout(function(){
 					console.error(req.url," timeout");
-					clientReq.destroy();
+					clientReq.abort();
 					res.statusCode=408;
 					res.end();
 				}, TIMEOUT * 1000);
@@ -75,13 +90,11 @@ http.createServer(function(req,res){
 		 if(needCache){
 			 needCache=checkCanCacheByHeader(response.headers);
 		 }
-		 res.statueCode=response.statusCode;
+		 res.statusCode=response.statusCode;
+		 
 		 for(var k in response.headers){
 			 res.setHeader(k,response.headers[k]);
 		 }
-		 
-		 var isGzip=response.headers['content-encoding']=='gzip';
-		 if(isGzip)needCache=false;
 		 response.on('data',function(chunk){
 			 clearTimer();
 			 if(needCache && !fd){
@@ -90,31 +103,20 @@ http.createServer(function(req,res){
 			 }
 			 res.write(chunk);
 			if(fd){
-					fs.writeSync(fd,chunk,0,chunk.length);
+				fs.writeSync(fd,chunk,0,chunk.length);
 			 }
 		 });
 		 response.on('end',function(){
 			 clearTimer();
 			 res.end();
 			 if(fd){
-				 fs.close(fd);
-				 if(isGzip){
-					 console.log('gizp');
-					 /*
-					  * @todo ungzip
-					 var inp = fs.createReadStream(cache_file);
-					 var out = fs.createWriteStream(cache_file+".uzip");
-					 inp.pipe(zlib.createGzip()).pipe(out);
-					 fs.unlinkSync(cache_file);
-					 fs.rename(cache_file+".uzip",cache_file);
-					 */
-				 }
+				 fs.closeSync(fd);
 				 fd=null;
 			 }
 		 });
 	 });
 	 clientReq.on('error',function(e){
-		 console.log(e);
+//		 console.log(e);
 	 });
  }).listen(PORT);
  
@@ -128,8 +130,6 @@ function directoryCheck(dir){
 
 function canCache(myurl){
 	 var _url=url.parse(myurl);
-//	 if((_url['search']||"").length>20)return false;//带有较多参数的
-	 
 	 var ext=path.extname(_url['pathname']).replace(/^\./,"").toLowerCase();
     var exts="js,css,xml,gif,jpg,jpeg,png,swf,flv,";
     return  ext && !!exts.match(ext+",");
