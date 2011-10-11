@@ -14,13 +14,15 @@ var zlib = require('zlib');
 
 var PORT=5000, //端口
     TIMEOUT=30, //超时时间 30秒
+    CACHE=true;                    //是否缓存
     CACHE_ROOT="/tmp/node-proxy/",  //环境根目录
-    SAVE_CACHE=true;                //是否缓存内容
+    SAVE_CACHE=false;               //是否缓存内容到本地文件
 
-console.log("proxy start width port:"+PORT+" cache dir is:"+CACHE_ROOT);
+console.log("proxy start width port:"+PORT+(SAVE_CACHE?(" cache dir is:"+CACHE_ROOT):""));
 
-http.createServer(function(req,res){
-	 console.log(req.method,req.url);
+var ser=http.createServer(function(req,res){
+    res._end=res.end;
+    res.end=function(data){res._end(data);console.log(req.method,res.statusCode,req.url);}
 	 
 	 var _url=url.parse(req.url);
 	 var _host=req.headers.host.split(":");
@@ -32,7 +34,7 @@ http.createServer(function(req,res){
 			      'method':req.method,
 			      'headers':headers
 			      };
-	 var needCache=req.method=="GET" && SAVE_CACHE && canCache(req.url),
+	 var needCache=req.method=="GET" && CACHE && canCache(req.url),
 	     cache_file=null;
 	 
 	 res.setHeader('x-cache','node-proxy-cache');
@@ -73,7 +75,7 @@ http.createServer(function(req,res){
 		timer = setTimeout(function(){
 					console.error(req.url," timeout");
 					clientReq.abort();
-					res.statusCode=408;
+					res.statusCode=504;
 					res.end();
 				}, TIMEOUT * 1000);
 	}
@@ -97,7 +99,7 @@ http.createServer(function(req,res){
 		 }
 		 response.on('data',function(chunk){
 			 clearTimer();
-			 if(needCache && !fd){
+			 if(SAVE_CACHE && needCache && !fd){
 				 directoryCheck(path.dirname(cache_file));
 				 fd=fs.openSync(cache_file,'w+');
 			 }
@@ -118,7 +120,8 @@ http.createServer(function(req,res){
 	 clientReq.on('error',function(e){
 //		 console.log(e);
 	 });
- }).listen(PORT);
+ });
+ser.listen(PORT);
  
  
 function directoryCheck(dir){
