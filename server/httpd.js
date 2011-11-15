@@ -92,7 +92,15 @@ function requestListener(req,res){
 	var _host=req.headers.host.split(":");
 	var hostname=_host[0],port=_host[1];
 	
-	console.log(req.client.remoteAddress+" - - ["+new Date().toLocaleString()+"] \""+req.method+" "+req.url+"\" \"http://"+req.headers.host+"\" \""+req.headers['user-agent']+"\"");
+	res._end=res.end;
+    res.end=function(data){
+    	res._end(data);
+    	console.log(req.client.remoteAddress+" - - ["+new Date().toLocaleString()+"] \""+
+    			     req.method+" "+req.url+" "+"HTTP/"+req.httpVersion+"\" "+ res.statusCode +
+    			     " \"http://"+req.headers.host+"\" \""+
+    			     req.headers['user-agent']+"\"");
+    	};
+	
 
 	var _SERVER={    "SERVER_ADDR":hostname,
 				       "SERVER_PORT":config.port,
@@ -369,6 +377,9 @@ function handler_default(req,res){
              var body="<html><head><meta content='text/html; charset="+runTime.config.charset+"' http-equiv='Content-Type'>"
                        +"<title>index of "+location.pathname+"</title></head><body style='margin:10px 20px'>"
                        +"<h1>index of "+location.pathname+"</h1><hr/>";
+	             if(location.pathname!="/"){
+	            	 body+="<div><a href='"+encodeURI(p+"/..")+"'>..</a></div>";
+	               }
                  for(var i=0;i<files.length;i++){
                 	 if(!files[i].match(/^\./)){
                      body+="<div><a href='"+encodeURI(p+"/"+files[i])+"'>"+files[i]+"</a></div>";
