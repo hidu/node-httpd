@@ -18,11 +18,13 @@ var mime=require("./mime"),
     vm=require('vm'),
     http = require("http"),
     cookie=require("./cookie");
+    util=require("util");
+    se=require("./session");
 
 var httpd = exports;
 httpd.version='1.0';
 var vhosts=require('./conf/vhosts');
-
+var _config=config;
 
 /**
  * {uri:function(){}}
@@ -91,17 +93,12 @@ function requestListener(req,res){
 	var filename=config.documentRoot+p;
 	var _host=req.headers.host.split(":");
 	var hostname=_host[0],port=_host[1];
-	
-	res._end=res.end;
-    res.end=function(data){
-    	res._end(data);
-    	console.log(req.client.remoteAddress+" - - ["+new Date().toLocaleString()+"] \""+
-    			     req.method+" "+req.url+" "+"HTTP/"+req.httpVersion+"\" "+ res.statusCode +
-    			     " \"http://"+req.headers.host+"\" \""+
-    			     req.headers['user-agent']+"\"");
-    	};
-	
+	var shutdown_functions=[];
 
+	function regirest_shutdown_function(fn){
+		shutdown_functions.push(fn);
+	};
+	
 	var _SERVER={    "SERVER_ADDR":hostname,
 				       "SERVER_PORT":config.port,
 				       "SERVER_SOFTWARE":"node-httpd "+httpd.version,
@@ -126,6 +123,8 @@ function requestListener(req,res){
 	req.$_GET=_GET;
 	var _COOKIE=cookie.getAllCookie(req);
 
+	req.session_name=_config.session_name;
+
 	var runTime;
 	var sandbox = {   require: require,
 			            console: console,
@@ -139,8 +138,50 @@ function requestListener(req,res){
 	                   $_GET:_GET,
 	                   $_POST:{},
 	                   $_COOKIE:_COOKIE,
-	                   setcookie:function(key,value,expire,properties){cookie.setcookie(res,key,value,expire,properties);}
+	                   setcookie:function(key,value,expire,properties){cookie.setcookie(res,key,value,expire,properties);},
+	                   dump:function(a){var b=util.inspect(a);sandbox.echo(b);},
+	                   session_name:function(name){ req.session_name=name;},
+	                   session_id:function(id){req.session_id=id;},
+	                   session_start:function(){
+		                	   if(!req.session_id){
+		                		   req.session_id=_COOKIE[req.session_name];
+		                		   if(!req.session_id){
+		                			   req.session_id=myu.md5(util.inspect(req.socket));
+		                			   sandbox.setcookie(req.session_name,req.session_id,600);
+		                		   }
+		                	   }
+		                	   $_SESSION=se.read(req.session_id);
+	                      },
+	                    session:function(k,v){
+		                    	if(k===undefined ){
+		                    		return $_SESSION;
+		                    	}else if(v===undefined){
+		                    		return $_SESSION[k];
+		                    	}else{
+		                    		if(v===null){
+		                    			delete $_SESSION[k];
+		                    		}else{
+		                    			$_SESSION[k]=v;
+		                    		}
+		                    		se.write(req.session_id,$_SESSION);   
+		                    	}
+	                       }
+	                   
 	                     };
+	
+   
+	res._end=res.end;
+    res.end=function(data){
+    	res._end(data);
+    	console.log(req.client.remoteAddress+" - - ["+new Date().toLocaleString()+"] \""+
+    			     req.method+" "+req.url+" "+"HTTP/"+req.httpVersion+"\" "+ res.statusCode +
+    			     " \"http://"+req.headers.host+"\" \""+
+    			     req.headers['user-agent']+"\"");
+    	   for(var i in shutdown_functions){
+    		   shutdown_functions[i]();
+    	   }
+   };
+    	
 	
 	if(req.method === 'POST'){
 		var _data='';
@@ -161,6 +202,7 @@ function requestListener(req,res){
 	  res.setHeader("Content-Type", mime.getByExt(myu.extname(filename),config.charset));
 	  res.statusCode=200;
 	  if(false===httpd.filterAll.call(runTime)){
+		  res.end();
 	     return;
 	  }  
 	  if(httpd.handMap[p]){
@@ -412,11 +454,15 @@ function _check_dir(compileDir,sourceDir){
 				var stats_c=fs.statSync(cp);
 				if(stats_c.isDirectory()){
 					_check_dir(cp,sourceDir+"/"+filename);
-				}else{
+				}else if(stats_c.isFile()){
 					var sp=sourceDir+"/"+filename.slice(0,-3);
-					var stats_s=fs.statSync(sp);
-					if(stats_c.mtime.getTime() != stats_s.mtime.getTime()){
-						httpd.compileNsp(sp,cp,'utf-8');
+					if(path.existsSync(sp)){
+						var stats_s=fs.statSync(sp);
+						if(stats_c.mtime.getTime() != stats_s.mtime.getTime()){
+							httpd.compileNsp(sp,cp,'utf-8');
+						}
+					}else{
+						fs.unlink(cp);
 					}
 				}
 			}
@@ -441,3 +487,5 @@ if(config.autoCompileCheck){
 		})(uniqueDocuments[k]);
 	}
 }
+
+setInterval(function(){se.gc();},1000*30);

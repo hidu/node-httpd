@@ -12,6 +12,9 @@ var path=require('path');
 var serverRoot=path.dirname(path.dirname(__dirname));
 config.compileDir=serverRoot+"/compile";
 config.autoCompileCheck=true;//是否自动检查编译文件是否最新
+config.session_name='nsp';
+config.session_savePath=serverRoot+"/session";
+config.session_gc_maxlifetime=30;//session GC 时间 秒
 
 var defaultHost={};
 defaultHost.port=8080;
@@ -25,7 +28,7 @@ defaultHost.aclFunction=function(){
 		this.res.statusCode=403;
 		return false;
 	}
-}
+};
 
 config.defaultHost=defaultHost;
 config.serverRoot=serverRoot;

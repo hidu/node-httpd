@@ -28,6 +28,9 @@ util.str2Array=function(str,spilt){
    return util.trim(str).replace(/\s+/g,spilt==" "?" ":"").split(spilt);
 };
 
+/**
+ * 将nsp文件编译为javascript文件
+ */
 util.compileNsp=function(code){
    // var code=require('fs').readFileSync(filename,httpd.config.charset);
     var reg0=/<script\s+run\=\s*[\'\"]?server\s*[\'\"]?\s*>([\s\S]*?)<\/script>/gmi; //<script run=server>echo('hello')</script>
@@ -101,6 +104,7 @@ util.directoryCheck=function(dir){
 
 util.md5=function(str){
 	var hash = require('crypto').createHash('md5');
+	if(typeof str =='object')str=require('util').inspect(str,true,3);
 	return hash.update(str+"").digest('hex');
 };
 //获取一个32位随机字符串
@@ -112,4 +116,4 @@ util.headerNoCache=function(res){
 	 res.setHeader('Expires',"Thu, 19 Nov 1985 08:52:00 GMT");
 	 res.setHeader('Cache-Control',"no-store, no-cache, must-revalidate, post-check=0, pre-check=0");
 	 res.setHeader('Pragma',"no-cache");
-}
+};

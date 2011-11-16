@@ -1,0 +1,9 @@
+<?js
+session_start();
+session('a',1);
+session('b',[1,3,5]);
+var d=new Date();
+echo(d);
+echo("<hr/>");
+session('date',d);
+dump(session());

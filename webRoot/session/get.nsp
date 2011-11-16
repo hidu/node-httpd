@@ -1,0 +1,4 @@
+<?js
+session_start();
+var s=session();
+dump(s);
