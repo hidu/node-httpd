@@ -1,6 +1,73 @@
 run:
 node server/httpd.js
 
+nodejs 开发的web服务器/容器
 
+具有如下特性：
+    基于名字的虚拟主机支持。
+    基本的静态文件浏览支持。
+    nodejs server page支持：类似JSP,在html代码中夹杂书写服务器端javascript代码。
+    nodejs直接运行支持，类似servlet,输出html代码需要拼装，文件就是完整的javascript文件。
+    etag,Expires等支持
+    cookie、session支持。
 
+nodejs server page页面标签
+这个是node httpd 的nsp（nodejs server page）的语法，和php的标签类似。
+
+1.script标签：
+
+<script run="server">
+ //...
+//server前后的引号可以不写
+</script>
+
+ 
+
+2.短标签 short-tag
+
+<?=a?>
+//a为变量名称
+
+3.<?js 标签（同php 的<?php 标签一样）
+
+<?js
+   //这个时闭合的标签
+
+?>
+
+<?js
+//这个是不闭合的标签
+
+ 
+
+nsp,node页面的$_SERVER变量
+nodejs server page 页面可以获取到一些全局性质的数据。
+
+参考php的$_SERVER变量
+
+打印出：
+	
+{
+ 'SERVER_ADDR': null,
+  'SERVER_PORT': 8080,
+  'SERVER_SOFTWARE': 'node-httpd 1.0',
+  'DOCUMENT_ROOT': '/opt/workspace/node-httpd/webRoot',
+  'SCRIPT_FILENAME': '/opt/workspace/node-httpd/webRoot/world.nsp',
+  'SCRIPT_NAME': 'world.nsp',
+  'REQUEST_METHOD': 'GET',
+  'SERVER_PROTOCOL': 'HTTP/1.1',
+  'REQUEST_URI': '/world.nsp',
+  'QUERY_STRING': '',
+  'REQUEST_TIME': 1317185700461,
+  'HTTP-HOST': '127.0.0.1:8080',
+  'HTTP-USER-AGENT': 'Mozilla/5.0 (X11; Linux x86_64; rv:7.0) Gecko/20100101 Firefox/7.0',
+  'HTTP-ACCEPT': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'HTTP-ACCEPT-LANGUAGE': 'zh-cn,zh-tw;q=0.8,en-us;q=0.5,en;q=0.3',
+  'HTTP-ACCEPT-ENCODING': 'gzip, deflate',
+  'HTTP-ACCEPT-CHARSET': 'UTF-8,*',
+  'HTTP-REFERER': 'http://127.0.0.1:8080/',
+  'HTTP-X-FORWARDED-FOR': '127.0.0.1',
+  'HTTP-CACHE-CONTROL': 'max-age=259200',
+  'HTTP-CONNECTION': 'keep-alive'
+}
 
